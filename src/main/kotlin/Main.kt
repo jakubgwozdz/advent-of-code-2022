@@ -79,20 +79,24 @@ private fun runFor(day: Int, part: Int, op: (String) -> Any) {
 private fun generateKotlinFiles() {
     @Language("kotlin") val content = """
         package day0
-
+        
+        import parseRecords
         import readAllText
         import kotlin.time.DurationUnit
         import kotlin.time.measureTime
-
+        
         fun main() = measureTime {
             println(part1(readAllText("local/day0_input.txt")))
             println(part2(readAllText("local/day0_input.txt")))
         }.let { println(it.toString(DurationUnit.SECONDS, 3)) }
-
-        fun part1(input: String) = input.lineSequence().filterNot(String::isBlank)
+        
+        private val regex = "(.+)".toRegex()
+        private fun parse(matchResult: MatchResult) = matchResult.destructured.let { (a) -> a }
+        
+        fun part1(input: String) = input.parseRecords(regex, ::parse)
             .count()
-
-        fun part2(input: String) = input.lineSequence().filterNot(String::isBlank)
+        
+        fun part2(input: String) = input.parseRecords(regex, ::parse)
             .count()
 
     """.trimIndent()
