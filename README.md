@@ -21,5 +21,5 @@ session=5361......bb4c6
 
 - each day at 6AM (CET) run
 ```bash
-DAY=`date "+%d"` ; curl -v -b `cat local/cookie` https://adventofcode.com/2022/day/${DAY}/input -o local/day${DAY}_input.txt
+DAY=`date "+%-d"` ; curl -v -b `cat local/cookie` https://adventofcode.com/2022/day/${DAY}/input -o local/day${DAY}_input.txt
 ```
