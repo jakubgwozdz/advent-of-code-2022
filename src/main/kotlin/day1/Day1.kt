@@ -1,6 +1,5 @@
 package day1
 
-import parseRecords
 import readAllText
 import kotlin.time.DurationUnit
 import kotlin.time.measureTime
@@ -10,11 +9,21 @@ fun main() = measureTime {
     println(part2(readAllText("local/day1_input.txt")))
 }.let { println(it.toString(DurationUnit.SECONDS, 3)) }
 
-private val regex = "(.+)".toRegex()
-private fun parse(matchResult: MatchResult) = matchResult.destructured.let { (a) -> a }
+fun part1(input: String) = elves(input).max()
+fun part2(input: String) = elves(input).sortedDescending().take(3).sum()
 
-fun part1(input: String) = input.parseRecords(regex, ::parse)
-    .count()
-
-fun part2(input: String) = input.parseRecords(regex, ::parse)
-    .count()
+private fun elves(input: String) = with(input.lineSequence().iterator()) {
+    buildList {
+        while (hasNext()) {
+            val elf = buildList {
+                var sameElf = true
+                while (sameElf) {
+                    val next = next()
+                    sameElf = next.isNotBlank()
+                    if (sameElf) this.add(next.toInt())
+                }
+            }
+            add(elf.sum())
+        }
+    }
+}
