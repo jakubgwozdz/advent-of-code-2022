@@ -1,6 +1,7 @@
 package day1
 
 import readAllText
+import splitBy
 import kotlin.time.DurationUnit
 import kotlin.time.measureTime
 
@@ -12,18 +13,5 @@ fun main() = measureTime {
 fun part1(input: String) = elves(input).max()
 fun part2(input: String) = elves(input).sortedDescending().take(3).sum()
 
-private fun elves(input: String) = with(input.lineSequence().iterator()) {
-    buildList {
-        while (hasNext()) {
-            val elf = buildList {
-                var sameElf = true
-                while (sameElf) {
-                    val next = next()
-                    sameElf = next.isNotBlank()
-                    if (sameElf) this.add(next.toInt())
-                }
-            }
-            add(elf.sum())
-        }
-    }
-}
+private fun elves(input: String) = input.lineSequence().splitBy(String::isBlank)
+    .map { it.sumOf(String::toInt) }
