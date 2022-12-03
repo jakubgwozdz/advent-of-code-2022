@@ -10,14 +10,13 @@ fun main() = measureTime {
 }.let { println(it.toString(DurationUnit.SECONDS, 3)) }
 
 fun part1(input: String) = input.lineSequence().filter(String::isNotBlank)
-    .map { it.take(it.length / 2).toSet() to it.takeLast(it.length / 2).toSet() }
-    .map { (a, b) -> a.single { it in b } }
+    .map { it.chunked(it.length / 2) }
+    .map { it.map(String::toSet).reduce(Set<Char>::intersect).single() }
     .sumOf(::priority)
 
 fun part2(input: String) = input.lineSequence().filter(String::isNotBlank)
     .chunked(3)
-    .map { Triple(it[0].toSet(), it[1].toSet(), it[2].toSet()) }
-    .map { (a, b, c) -> a.filter { it in b }.single { it in c } }
+    .map { it.map(String::toSet).reduce(Set<Char>::intersect).single() }
     .sumOf(::priority)
 
 private fun priority(c: Char) = when {
