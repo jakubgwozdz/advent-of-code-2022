@@ -20,11 +20,11 @@ fun main() = measureTime {
 }.let { println(it.toString(DurationUnit.SECONDS, 3)) }
 
 private val regex = "(\\d+)-(\\d+),(\\d+)-(\\d+)".toRegex()
-private fun parse(matchResult: MatchResult) = matchResult.destructured
-    .let { (a, b, c, d) -> listOf(a, b, c, d).map(String::toInt) }
+private fun parse(matchResult: MatchResult) =
+    matchResult.destructured.let { (a, b, c, d) -> (a.toInt()..b.toInt()) to (c.toInt()..d.toInt()) }
 
 fun part1(input: String) = input.parseRecords(regex, ::parse)
-    .count { (a, b, c, d) -> a in (c..d) && b in (c..d) || c in (a..b) && d in (a..b) }
+    .count { (s1, s2) -> s1.first in s2 && s1.last in s2 || s2.first in s1 && s2.last in s1 }
 
 fun part2(input: String) = input.parseRecords(regex, ::parse)
-    .count { (a, b, c, d) -> a in (c..d) || b in (c..d) || c in (a..b) || d in (a..b) }
+    .count { (s1, s2) -> s1.first in s2 || s1.last in s2 || s2.first in s1 || s2.last in s1 }
