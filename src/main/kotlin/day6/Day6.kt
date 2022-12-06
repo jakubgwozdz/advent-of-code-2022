@@ -13,6 +13,5 @@ fun part1(input: String) = solve(input, 4)
 fun part2(input: String) = solve(input, 14)
 
 private fun solve(input: String, size: Int) =
-    input.windowedSequence(size).withIndex().first {
-        it.value.toList().distinct().size == size
-    }.index + size
+    input.windowedSequence(size) { it.asIterable().distinct().size }
+        .indexOfFirst { it == size } + size
