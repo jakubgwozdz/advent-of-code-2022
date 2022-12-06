@@ -1,6 +1,5 @@
 package day6
 
-import parseRecords
 import readAllText
 import kotlin.time.DurationUnit
 import kotlin.time.measureTime
@@ -10,11 +9,10 @@ fun main() = measureTime {
     println(part2(readAllText("local/day6_input.txt")))
 }.let { println(it.toString(DurationUnit.SECONDS, 3)) }
 
-private val regex = "(.+)".toRegex()
-private fun parse(matchResult: MatchResult) = matchResult.destructured.let { (a) -> a }
+fun part1(input: String) = solve(input, 4)
+fun part2(input: String) = solve(input, 14)
 
-fun part1(input: String) = input.parseRecords(regex, ::parse)
-    .count()
-
-fun part2(input: String) = input.parseRecords(regex, ::parse)
-    .count()
+private fun solve(input: String, size: Int) =
+    input.windowedSequence(size).withIndex().first {
+        it.value.toList().distinct().size == size
+    }.index + size
