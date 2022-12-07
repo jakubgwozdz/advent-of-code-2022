@@ -44,37 +44,42 @@ fun part2(input: String) = parse(input).let { dirSizes ->
 }
 
 private fun parse(input: String) = input.lineSequence().filterNot(String::isBlank)
-    .fold(Filesystem()) { filesystem, command ->
+    .fold(Filesystem(cwd = "dummy")) { filesystem, command ->
         when {
             command.startsWith("$ cd ") -> filesystem.cd(command)
-            command.startsWith("dir ") -> filesystem.dir(command.substringAfter("dir "))
-            command.first().isDigit() -> filesystem.file(command.substringBefore(" ").toInt())
+            command.startsWith("dir ") -> filesystem.addDir(command.substringAfter("dir "))
+            command.first().isDigit() -> filesystem.addFile(command.substringBefore(" ").toInt())
             command == "$ ls" -> filesystem.resetCwd()
             else -> error("WTF `$command`")
         }
     }.sizes()
 
 data class Filesystem(
-    private val tree: Map<String, DirNode> = mapOf("/" to DirNode()),
-    private val cwd: String = "dummy"
+    private val tree: Map<String, DirNode> = emptyMap(),
+    private val cwd: String
 ) {
-    fun cd(command: String) = copy(cwd = cwd.pathResolve(command.substringAfter("$ cd ")))
-    fun resetCwd() = apply { tree[cwd]!!.apply { directContent = 0; indirectContent.clear() } }
-    fun file(size: Int) = apply { tree[cwd]!!.directContent += size }
-    fun dir(dirName: String) = DirNode().let { dirNode ->
-        copy(tree = tree + (cwd.pathResolve(dirName) to dirNode))
-            .apply { tree[cwd]!!.indirectContent += dirNode }
-    }
-    fun sizes() = tree.values.map { it.size }
 
-    class DirNode(var directContent: Int = 0, val indirectContent: MutableList<DirNode> = mutableListOf()) {
-        val size: Int get() = directContent + indirectContent.sumOf { it.size }
-    }
+    fun cd(command: String) = copy(cwd = cwd.pathResolve(command.substringAfter("$ cd ")))
+    fun resetCwd() = copy(tree = tree - cwd)
+    fun addFile(size: Int) = copy(tree = tree + (cwd to (tree[cwd] ?: DirNode()).run {
+        copy(directContent = directContent + size)
+    }))
+
+    fun addDir(dirName: String) = copy(tree = tree + (cwd to (tree[cwd] ?: DirNode()).run {
+        copy(indirectContent = indirectContent + cwd.pathResolve(dirName))
+    }))
+
+    fun sizes() = tree.values.map { getSize(it) }
+
+    data class DirNode(val directContent: Int = 0, val indirectContent: List<String> = listOf())
+
+    private fun getSize(dirNode: DirNode): Int =
+        dirNode.directContent + dirNode.indirectContent.sumOf { this@Filesystem.tree[it]?.let(::getSize) ?: 0 }
 
     private fun String.pathResolve(entry: String) = when (entry) {
         ".." -> substringBeforeLast("/").ifBlank { "/" }
-        "/" -> "/"
-        else -> "$this/$entry"
+        "/" -> entry
+        else -> if (this == "/") "/$entry" else "$this/$entry"
     }
 
 }
