@@ -36,36 +36,39 @@ fun main() = measureTime {
     println(part2(readAllText("local/day7_input.txt")))
 }.let { println(it.toString(DurationUnit.SECONDS, 3)) }
 
-fun part1(input: String): Int = parse(input).filter { it.size <= 100000 }.sumOf { it.size }
+fun part1(input: String) = parse(input).filter { it <= 100000 }.sum()
 
-fun part2(input: String): Int {
-    val dirNodes = parse(input)
-    val used = 70000000 - dirNodes.maxOf { it.size }
-    val required = 30000000 - used
-
-    return dirNodes.filter { it.size >= required }.minOf { it.size }
+fun part2(input: String) = parse(input).let { dirSizes ->
+    val required = dirSizes.max() - (70000000 - 30000000)
+    dirSizes.filter { it >= required }.min()
 }
 
-sealed interface TreeNode {
-    val size: Int
-}
-
-data class FileNode(override val size: Int) : TreeNode
-
-data class DirNode(val content: MutableList<TreeNode> = mutableListOf()) : TreeNode {
-    override val size: Int get() = content.sumOf { it.size }
-}
+private fun parse(input: String) = input.lineSequence().filterNot(String::isBlank)
+    .fold(Filesystem()) { filesystem, command ->
+        when {
+            command.startsWith("$ cd ") -> filesystem.cd(command)
+            command.startsWith("dir ") -> filesystem.dir(command.substringAfter("dir "))
+            command.first().isDigit() -> filesystem.file(command.substringBefore(" ").toInt())
+            command == "$ ls" -> filesystem.resetCwd()
+            else -> error("WTF `$command`")
+        }
+    }.sizes()
 
 data class Filesystem(
-    val tree: Map<String, DirNode> = mapOf("/" to DirNode()),
-    val cwd: String = "dummy"
+    private val tree: Map<String, DirNode> = mapOf("/" to DirNode()),
+    private val cwd: String = "dummy"
 ) {
     fun cd(command: String) = copy(cwd = cwd.pathResolve(command.substringAfter("$ cd ")))
-    fun ls() = apply { tree[cwd]!!.content.clear() }
-    fun file(size: Int) = apply { tree[cwd]!!.content += FileNode(size) }
+    fun resetCwd() = apply { tree[cwd]!!.apply { directContent = 0; indirectContent.clear() } }
+    fun file(size: Int) = apply { tree[cwd]!!.directContent += size }
     fun dir(dirName: String) = DirNode().let { dirNode ->
         copy(tree = tree + (cwd.pathResolve(dirName) to dirNode))
-            .apply { tree[cwd]!!.content += dirNode }
+            .apply { tree[cwd]!!.indirectContent += dirNode }
+    }
+    fun sizes() = tree.values.map { it.size }
+
+    class DirNode(var directContent: Int = 0, val indirectContent: MutableList<DirNode> = mutableListOf()) {
+        val size: Int get() = directContent + indirectContent.sumOf { it.size }
     }
 
     private fun String.pathResolve(entry: String) = when (entry) {
@@ -75,14 +78,3 @@ data class Filesystem(
     }
 
 }
-
-private fun parse(input: String) = input.lineSequence().filterNot(String::isBlank)
-    .fold(Filesystem()) { filesystem, command ->
-        when {
-            command.startsWith("$ cd ") -> filesystem.cd(command)
-            command.startsWith("dir ") -> filesystem.dir(command.substringAfter("dir "))
-            command.first().isDigit() -> filesystem.file(command.substringBefore(" ").toInt())
-            command == "$ ls" -> filesystem.ls()
-            else -> error("WTF `$command`")
-        }
-    }.tree.values
