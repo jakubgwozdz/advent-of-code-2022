@@ -36,11 +36,13 @@ fun main() = measureTime {
     println(part2(readAllText("local/day7_input.txt")))
 }.let { println(it.toString(DurationUnit.SECONDS, 3)) }
 
-fun part1(input: String) = parse(input).filter { it <= 100000 }.sum()
+fun part1(input: String) = parse(input).sizes().filter { it <= 100000 }.sum()
 
-fun part2(input: String) = parse(input).let { dirSizes ->
-    val required = dirSizes.max() - (70000000 - 30000000)
-    dirSizes.filter { it >= required }.min()
+fun part2(input: String) = parse(input).let { filesystem ->
+    val dirSizes = filesystem.sizes().sorted()
+    val required = dirSizes.last() - (70000000 - 30000000)
+    val index = dirSizes.binarySearch { it - required }
+    dirSizes[if (index >= 0) index else -index - 1]
 }
 
 private fun parse(input: String) = input.lineSequence().filterNot(String::isBlank)
@@ -52,7 +54,7 @@ private fun parse(input: String) = input.lineSequence().filterNot(String::isBlan
             command == "$ ls" -> filesystem.resetCwd()
             else -> error("WTF `$command`")
         }
-    }.sizes()
+    }
 
 data class Filesystem(
     private val tree: Map<String, DirNode> = emptyMap(),
