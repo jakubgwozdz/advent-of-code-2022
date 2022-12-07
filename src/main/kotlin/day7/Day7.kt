@@ -56,55 +56,33 @@ data class DirNode(val content: MutableList<TreeNode> = mutableListOf()) : TreeN
     override val size: Int get() = content.sumOf { it.size }
 }
 
-data class Filesystem(val tree: Map<String, DirNode> = mapOf("/" to DirNode()), val cwd: String = "dummy")
+data class Filesystem(
+    val tree: Map<String, DirNode> = mapOf("/" to DirNode()),
+    val cwd: String = "dummy"
+) {
+    fun cd(command: String) = copy(cwd = cwd.pathResolve(command.substringAfter("$ cd ")))
+    fun ls() = apply { tree[cwd]!!.content.clear() }
+    fun file(size: Int) = apply { tree[cwd]!!.content += FileNode(size) }
+    fun dir(dirName: String) = DirNode().let { dirNode ->
+        copy(tree = tree + (cwd.pathResolve(dirName) to dirNode))
+            .apply { tree[cwd]!!.content += dirNode }
+    }
 
-private fun parse(input: String) = input.lineSequence().filterNot(String::isBlank)
-    .fold("dummy" to mapOf("/" to DirNode())) { (cwd, filesystem), command ->
-        when {
-            command.startsWith("$ cd ") -> cd(cwd, command, filesystem)
-            command.startsWith("dir ") -> dir(filesystem, cwd, command)
-            command.first().isDigit() -> file(filesystem, cwd, command)
-            command == "$ ls" -> ls(filesystem, cwd)
-            else -> error("WTF `$command`")
-        }
-    }.second.values
-
-private fun ls(
-    filesystem: Map<String, DirNode>,
-    cwd: String
-): Pair<String, Map<String, DirNode>> {
-    filesystem[cwd]!!.content.clear()
-    return cwd to filesystem
-}
-
-private fun file(
-    filesystem: Map<String, DirNode>,
-    cwd: String,
-    command: String
-): Pair<String, Map<String, DirNode>> {
-    filesystem[cwd]!!.content += FileNode(command.substringBefore(" ").toInt())
-    return cwd to filesystem
-}
-
-private fun dir(
-    filesystem: Map<String, DirNode>,
-    cwd: String,
-    command: String
-): Pair<String, Map<String, DirNode>> {
-    val dirNode = DirNode()
-    filesystem[cwd]!!.content += dirNode
-    return cwd to filesystem + (cwd.pathResolve(command.substringAfter("dir ")) to dirNode)
-}
-
-private fun cd(
-    cwd: String,
-    command: String,
-    filesystem: Map<String, DirNode>
-) = cwd.pathResolve(command.substringAfter("$ cd ")) to filesystem
-
-private fun String.pathResolve(entry: String) =
-    when (entry) {
+    private fun String.pathResolve(entry: String) = when (entry) {
         ".." -> substringBeforeLast("/").ifBlank { "/" }
         "/" -> "/"
         else -> "$this/$entry"
     }
+
+}
+
+private fun parse(input: String) = input.lineSequence().filterNot(String::isBlank)
+    .fold(Filesystem()) { filesystem, command ->
+        when {
+            command.startsWith("$ cd ") -> filesystem.cd(command)
+            command.startsWith("dir ") -> filesystem.dir(command.substringAfter("dir "))
+            command.first().isDigit() -> filesystem.file(command.substringBefore(" ").toInt())
+            command == "$ ls" -> filesystem.ls()
+            else -> error("WTF `$command`")
+        }
+    }.tree.values
