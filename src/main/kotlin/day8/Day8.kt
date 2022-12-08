@@ -1,20 +1,62 @@
 package day8
 
-import parseRecords
 import readAllText
+import kotlin.math.absoluteValue
 import kotlin.time.DurationUnit
 import kotlin.time.measureTime
 
 fun main() = measureTime {
+    val test = """
+        30373
+        25512
+        65332
+        33549
+        35390
+    """.trimIndent()
+    println(part1(test))
     println(part1(readAllText("local/day8_input.txt")))
+    println(part2(test))
     println(part2(readAllText("local/day8_input.txt")))
 }.let { println(it.toString(DurationUnit.SECONDS, 3)) }
 
-private val regex = "(.+)".toRegex()
-private fun parse(matchResult: MatchResult) = matchResult.destructured.let { (a) -> a }
+fun part1(input: String) = input.lineSequence().filterNot(String::isBlank).toList().let { rows ->
+    rows.indices.sumOf { y ->
+        rows.first().indices.count { x ->
+            val c = rows[y][x]
+            val u = (y - 1 downTo 0).all { i -> rows[i][x] < c }
+            val d = (y + 1..rows.lastIndex).all { i -> rows[i][x] < c }
+            val l = (x - 1 downTo 0).all { i -> rows[y][i] < c }
+            val r = (x + 1..rows.first().lastIndex).all { i -> rows[y][i] < c }
+            u || d || l || r
+        }
+    }
+}
 
-fun part1(input: String) = input.parseRecords(regex, ::parse)
-    .count()
+fun IntProgression.countUpTo(op: (Int) -> Boolean): Int = asSequence().takeWhile(op).lastOrNull()
+    ?.let { if (it == last) (it - first).absoluteValue + 1 else (it - first).absoluteValue + 2 } ?: 0
 
-fun part2(input: String) = input.parseRecords(regex, ::parse)
-    .count()
+fun part2(input: String) = input.lineSequence().filterNot(String::isBlank).toList().let { rows ->
+    rows.indices.maxOf { y ->
+        rows.first().indices.maxOf { x ->
+            val c = rows[y][x]
+            val u = (y - 1 downTo 0).countUpTo { i -> rows[i][x] < c }
+            val d = (y + 1..rows.lastIndex).countUpTo { i -> rows[i][x] < c }
+            val l = (x - 1 downTo 0).countUpTo { i -> rows[y][i] < c }
+            val r = (x + 1..rows.first().lastIndex).countUpTo { i -> rows[y][i] < c }
+            u * d * l * r
+        }
+    }
+
+//    rows.indices.map { y ->
+//        rows[y].indices.map { x ->
+//            val c = rows[y][x]
+//            val u = (0..y - 1).count{ i -> rows[i][x] < c }
+//            val d = (y + 1..rows.lastIndex).count{ i -> rows[i][x] < c }
+//            val l = (0..x - 1).count{ i -> rows[y][i] < c }
+//            val r = (x + 1..rows[y].lastIndex).count{ i -> rows[y][i] < c }
+//            (y to x) to u*d*l*r
+//        }.maxBy { it.second }
+//    }.maxBy { it.second }
+//
+
+}
