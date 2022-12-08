@@ -32,31 +32,18 @@ fun part1(input: String) = input.lineSequence().filterNot(String::isBlank).toLis
     }
 }
 
-fun IntProgression.countUpTo(op: (Int) -> Boolean): Int = asSequence().takeWhile(op).lastOrNull()
+fun IntProgression.distanceTo(op: (Int) -> Boolean): Int = asSequence().takeWhile{ !op(it) }.lastOrNull()
     ?.let { if (it == last) (it - first).absoluteValue + 1 else (it - first).absoluteValue + 2 } ?: 0
 
 fun part2(input: String) = input.lineSequence().filterNot(String::isBlank).toList().let { rows ->
     rows.indices.maxOf { y ->
         rows.first().indices.maxOf { x ->
             val c = rows[y][x]
-            val u = (y - 1 downTo 0).countUpTo { i -> rows[i][x] < c }
-            val d = (y + 1..rows.lastIndex).countUpTo { i -> rows[i][x] < c }
-            val l = (x - 1 downTo 0).countUpTo { i -> rows[y][i] < c }
-            val r = (x + 1..rows.first().lastIndex).countUpTo { i -> rows[y][i] < c }
+            val u = (y - 1 downTo 0).distanceTo { i -> rows[i][x] >= c }
+            val d = (y + 1..rows.lastIndex).distanceTo { i -> rows[i][x] >= c }
+            val l = (x - 1 downTo 0).distanceTo { i -> rows[y][i] >= c }
+            val r = (x + 1..rows.first().lastIndex).distanceTo { i -> rows[y][i] >= c }
             u * d * l * r
         }
     }
-
-//    rows.indices.map { y ->
-//        rows[y].indices.map { x ->
-//            val c = rows[y][x]
-//            val u = (0..y - 1).count{ i -> rows[i][x] < c }
-//            val d = (y + 1..rows.lastIndex).count{ i -> rows[i][x] < c }
-//            val l = (0..x - 1).count{ i -> rows[y][i] < c }
-//            val r = (x + 1..rows[y].lastIndex).count{ i -> rows[y][i] < c }
-//            (y to x) to u*d*l*r
-//        }.maxBy { it.second }
-//    }.maxBy { it.second }
-//
-
 }
