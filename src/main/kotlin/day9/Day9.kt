@@ -2,9 +2,63 @@ package day9
 
 import parseRecords
 import readAllText
-import kotlin.math.absoluteValue
+import kotlin.math.sign
 import kotlin.time.DurationUnit
 import kotlin.time.measureTime
+
+enum class Direction { U, D, L, R }
+data class Pos(val r: Int, val c: Int) {
+    fun isAdjacent(other: Pos) = (r - other.r) in (-1..1) && (c - other.c) in (-1..1)
+    fun moveTowards(other: Pos) = Pos(r + (other.r - r).sign, c + (other.c - c).sign)
+    fun move(d: Direction) = when (d) {
+        Direction.U -> copy(r = r - 1)
+        Direction.D -> copy(r = r + 1)
+        Direction.L -> copy(c = c - 1)
+        Direction.R -> copy(c = c + 1)
+    }
+}
+
+data class State(
+    val tail: List<Pos>,
+    val visited: Set<Pos> = setOf(tail.last()),
+)
+
+fun part1(input: String) = solve(input, 2).visited.size
+
+fun part2(input: String) = solve(input, 10).visited.size
+
+private fun solve(input: String, length: Int) = input.parseRecords(regex, ::parse)
+    .flatMap { (d, l) -> (1..l).map { d } }
+    .fold(State(tail = (1..length).map { Pos(0, 0) })) { (tail, visited), d ->
+        val newTail = mutableListOf(tail.first().move(d))
+        tail.drop(1).forEach { pos ->
+            val prev = newTail.last()
+            newTail += if (pos.isAdjacent(prev)) pos else pos.moveTowards(prev)
+        }
+        State(newTail.toList(), visited + newTail.last())
+    }
+
+
+fun State.printIt() {
+    val all = visited + tail.toSet()
+    val rows = all.minOf { it.r } - 1..all.maxOf { it.r } + 1
+    val cols = all.minOf { it.c } - 1..all.maxOf { it.c } + 1
+    rows.forEach { r ->
+        println(cols.joinToString("") { c ->
+            when (val p = Pos(r, c)) {
+                tail.first() -> "H"
+                in tail -> tail.indexOf(p).toString()
+                in visited -> "s"
+                else -> "."
+            }
+        })
+    }
+    println()
+}
+
+private val regex = "(.) (\\d+)".toRegex()
+private fun parse(matchResult: MatchResult) =
+    matchResult.destructured.let { (a, b) -> Direction.valueOf(a) to b.toInt() }
 
 fun main() = measureTime {
     val test = """
@@ -17,39 +71,20 @@ fun main() = measureTime {
         L 5
         R 2
     """.trimIndent()
+    val test2 = """
+        R 5
+        U 8
+        L 8
+        D 3
+        R 17
+        D 10
+        L 25
+        U 20
+    """.trimIndent()
     println(part1(test))
     println(part2(test))
-    println(part1(readAllText("local/day9_input.txt")))
-    println(part2(readAllText("local/day9_input.txt")))
+    println(part2(test2))
+    val input = readAllText("local/day9_input.txt")
+    println(part1(input))
+    println(part2(input))
 }.let { println(it.toString(DurationUnit.SECONDS, 3)) }
-
-private val regex = "(.) (\\d+)".toRegex()
-private fun parse(matchResult: MatchResult) =
-    matchResult.destructured.let { (a, b) -> Direction.valueOf(a) to b.toInt() }
-
-enum class Direction { U, D, L, R }
-data class Pos(val r: Int, val c: Int)
-
-data class State(
-    val head: Pos = Pos(0, 0),
-    val tail: Pos = head,
-    val visited: Set<Pos> = setOf(tail),
-)
-
-fun part1(input: String) = input.parseRecords(regex, ::parse)
-    .flatMap { (d, l) -> (1..l).map { d to 1 } }
-    .fold(State()) { acc, (d, l) ->
-        val newHead = when (d) {
-            Direction.U -> acc.head.run { copy(r = r + 1) }
-            Direction.D -> acc.head.run { copy(r = r - 1) }
-            Direction.L -> acc.head.run { copy(c = c - 1) }
-            Direction.R -> acc.head.run { copy(c = c + 1) }
-        }
-        val newTail = if ((newHead.r - acc.tail.r) in (-1..1) && (newHead.c - acc.tail.c) in (-1..1))
-            acc.tail else acc.head
-        State(newHead, newTail, acc.visited+newTail)
-    }
-    .visited.size
-
-fun part2(input: String) = input.parseRecords(regex, ::parse)
-    .count()
