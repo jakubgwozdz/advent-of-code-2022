@@ -32,10 +32,10 @@ fun part1(input: String) = input.lineSequence().filterNot(String::isBlank).toLis
     }
 }
 
-fun IntProgression.distanceTo(op: (Int) -> Boolean): Int = asSequence().takeWhile{ !op(it) }.lastOrNull()
-    ?.let { if (it == last) (it - first).absoluteValue + 1 else (it - first).absoluteValue + 2 } ?: 0
+fun IntProgression.distanceTo(op: (Int) -> Boolean): Int = asSequence().takeWhile { !op(it) }.lastOrNull()
+    ?.let { (it - first).absoluteValue + if (it == last) 1 else 2 } ?: 0
 
-fun part2(input: String) = input.lineSequence().filterNot(String::isBlank).toList().let { rows ->
+fun part2(input: String) = input.lines().filterNot(String::isBlank).let { rows ->
     rows.indices.maxOf { y ->
         rows.first().indices.maxOf { x ->
             val c = rows[y][x]
