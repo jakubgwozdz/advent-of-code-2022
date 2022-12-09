@@ -1,6 +1,5 @@
 package day9
 
-import parseRecords
 import readAllText
 import kotlin.math.sign
 import kotlin.time.DurationUnit
@@ -18,32 +17,35 @@ data class Pos(val r: Int, val c: Int) {
     }
 }
 
-data class State(
-    val rope: List<Pos>,
-    val visited: Set<Pos>,
-) {
-    constructor(length: Int) : this((1..length).map { Pos(0, 0) }, setOf(Pos(0, 0)))
-}
+class State(length: Int) {
+    var rope: List<Pos> = (1..length).map { Pos(0, 0) }
+    val visited: MutableSet<Pos> = mutableSetOf(Pos(0, 0))
 
-fun part1(input: String) = solve(input, 2).visited.size
-
-fun part2(input: String) = solve(input, 10).visited.size
-
-private fun solve(input: String, length: Int) = input.parseRecords(regex, ::parse)
-    .flatMap { (d, l) -> (1..l).map { d } }
-    .fold(State(length)) { (rope, visited), d ->
-        val newRope = buildList(length) {
-            var last = rope.first().move(d)
-            add(last)
-            rope.drop(1).forEach { pos ->
-                val prev = last
-                last = if (pos.isAdjacent(prev)) pos else pos.moveTowards(prev)
-                add(last)
-            }
-        }
-        State(newRope, visited + newRope.last())
+    fun updateWith(newRope: List<Pos>) {
+        rope = newRope
+        visited += newRope.last()
     }
 
+}
+
+fun State.solve(input: String) = moveSequence(input)
+    .flatMap { (direction, l) -> (1..l).map { direction } }
+    .forEach { direction ->
+        buildList {
+            rope.forEachIndexed { index, pos ->
+                add(
+                    when {
+                        index == 0 -> pos.move(direction)
+                        pos.isAdjacent(last()) -> pos
+                        else -> pos.moveTowards(last())
+                    }
+                )
+            }
+        }.let { updateWith(it) }
+    }
+
+fun part1(input: String) = State(2).apply { solve(input) }.visited.size
+fun part2(input: String) = State(10).apply { solve(input) }.visited.size
 
 fun State.printIt() {
     val all = visited + rope.toSet()
@@ -63,8 +65,10 @@ fun State.printIt() {
 }
 
 private val regex = "(.) (\\d+)".toRegex()
-private fun parse(matchResult: MatchResult) =
-    matchResult.destructured.let { (a, b) -> Direction.valueOf(a) to b.toInt() }
+private fun moveSequence(input: String) = input.lineSequence()
+    .filterNot(String::isBlank)
+    .map { regex.matchEntire(it) ?: error("WTF `$it`") }
+    .map { it.destructured.let { (a, b) -> Direction.valueOf(a) to b.toInt() } }
 
 fun main() = measureTime {
     val test = """
