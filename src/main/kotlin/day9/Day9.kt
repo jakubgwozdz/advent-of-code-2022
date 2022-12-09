@@ -19,9 +19,11 @@ data class Pos(val r: Int, val c: Int) {
 }
 
 data class State(
-    val tail: List<Pos>,
-    val visited: Set<Pos> = setOf(tail.last()),
-)
+    val rope: List<Pos>,
+    val visited: Set<Pos>,
+) {
+    constructor(length: Int) : this((1..length).map { Pos(0, 0) }, setOf(Pos(0, 0)))
+}
 
 fun part1(input: String) = solve(input, 2).visited.size
 
@@ -29,25 +31,29 @@ fun part2(input: String) = solve(input, 10).visited.size
 
 private fun solve(input: String, length: Int) = input.parseRecords(regex, ::parse)
     .flatMap { (d, l) -> (1..l).map { d } }
-    .fold(State(tail = (1..length).map { Pos(0, 0) })) { (tail, visited), d ->
-        val newTail = mutableListOf(tail.first().move(d))
-        tail.drop(1).forEach { pos ->
-            val prev = newTail.last()
-            newTail += if (pos.isAdjacent(prev)) pos else pos.moveTowards(prev)
+    .fold(State(length)) { (rope, visited), d ->
+        val newRope = buildList(length) {
+            var last = rope.first().move(d)
+            add(last)
+            rope.drop(1).forEach { pos ->
+                val prev = last
+                last = if (pos.isAdjacent(prev)) pos else pos.moveTowards(prev)
+                add(last)
+            }
         }
-        State(newTail.toList(), visited + newTail.last())
+        State(newRope, visited + newRope.last())
     }
 
 
 fun State.printIt() {
-    val all = visited + tail.toSet()
+    val all = visited + rope.toSet()
     val rows = all.minOf { it.r } - 1..all.maxOf { it.r } + 1
     val cols = all.minOf { it.c } - 1..all.maxOf { it.c } + 1
     rows.forEach { r ->
         println(cols.joinToString("") { c ->
             when (val p = Pos(r, c)) {
-                tail.first() -> "H"
-                in tail -> tail.indexOf(p).toString()
+                rope.first() -> "H"
+                in rope -> rope.indexOf(p).toString()
                 in visited -> "s"
                 else -> "."
             }
