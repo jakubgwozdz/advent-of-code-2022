@@ -182,7 +182,7 @@ fun part2(input: String) = buildString {
     repeat(6) {
         repeat(40) { c ->
             val sprite = registers.next()
-            if (sprite - c in -1..1) append("[]") else append("  ")
+            append(if (sprite - c in -1..1) "⚪️" else "⚫️")
         }
         appendLine()
     }

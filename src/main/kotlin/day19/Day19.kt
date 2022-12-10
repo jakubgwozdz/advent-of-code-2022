@@ -1,20 +1,25 @@
 package day19
 
+import execute
 import parseRecords
 import readAllText
-import kotlin.time.DurationUnit
-import kotlin.time.measureTime
-
-fun main() = measureTime {
-    println(part1(readAllText("local/day19_input.txt")))
-    println(part2(readAllText("local/day19_input.txt")))
-}.let { println(it.toString(DurationUnit.SECONDS, 3)) }
-
-private val regex = "(.+)".toRegex()
-private fun parse(matchResult: MatchResult) = matchResult.destructured.let { (a) -> a }
 
 fun part1(input: String) = input.parseRecords(regex, ::parse)
     .count()
 
 fun part2(input: String) = input.parseRecords(regex, ::parse)
     .count()
+
+private val regex = "(.+)".toRegex()
+private fun parse(matchResult: MatchResult) = matchResult.destructured.let { (a) -> a }
+
+fun main() {
+    val input = readAllText("local/day19_input.txt")
+    val test = """
+        
+    """.trimIndent()
+    execute(::part1, test)
+    execute(::part1, input)
+    execute(::part2, test)
+    execute(::part2, input)
+}

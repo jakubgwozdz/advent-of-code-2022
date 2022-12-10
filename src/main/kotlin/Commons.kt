@@ -43,9 +43,9 @@ inline fun <T> execute(noinline op: (String) -> T, input: String, expected: T? =
         e.toString()
     }
     val duration = mark.elapsedNow()
-    val code = (op as FunctionReference).let { (it.owner as PackageReference).jClass.packageName + "." + it.name }
+    val code = (op as FunctionReference).let { "${(it.owner as PackageReference).jClass.packageName}.${it.name}()" }
     if (result.contains('\n'))
-        println("$code after ${duration.toString(DurationUnit.MILLISECONDS, 3)} = \n${result.trimEnd()}")
+        println("$code after ${duration.toString(DurationUnit.MILLISECONDS, 3)} => \n${result.trimEnd()}")
     else
-        println("$code after ${duration.toString(DurationUnit.MILLISECONDS, 3)} = $result")
+        println("$code after ${duration.toString(DurationUnit.MILLISECONDS, 3)} => $result")
 }
