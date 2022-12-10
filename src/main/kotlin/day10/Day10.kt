@@ -156,31 +156,34 @@ fun main() = measureTime {
     """.trimIndent()
 
     println(part1(test))
-//    TODO()
+    println(part2(test))
     println(part1(readAllText("local/day10_input.txt")))
     println(part2(readAllText("local/day10_input.txt")))
 }.let { println(it.toString(DurationUnit.SECONDS, 3)) }
 
-private val regex = "(.+)".toRegex()
-private fun parse(matchResult: MatchResult) = matchResult.destructured.let { (a) -> a }
+fun part1(input: String) = getRegisters(input)
+    .mapIndexed { index: Int, l -> (index + 1) to if ((index + 21) % 40 == 0) l else 0 }
+    .sumOf { (cycle, x) -> cycle * x }
 
-fun part1(input: String): Long {
-    val commands = input.lineSequence().filterNot(String::isBlank).toList()
-    val result = mutableListOf<Pair<Int, Long>>()
-    var cycle = 0
-    var x = 1L
-    commands.forEach { command ->
-        cycle++
-        if ((cycle +20) % 40 == 0) result += (cycle to x)
+private fun getRegisters(input: String) = buildList {
+    var x = 1
+    input.lineSequence().filterNot(String::isBlank).toList().forEach { command ->
+        add(x)
         if (command.startsWith("addx")) {
-            cycle++
-            if ((cycle +20) % 40 == 0) result += (cycle to x)
-            x += command.substringAfter("addx ").toLong()
+            add(x)
+            x += command.substringAfter("addx ").toInt()
         }
     }
-    return result.sumOf { (cycle, x) -> cycle * x }
 }
 
 
-fun part2(input: String) = input.parseRecords(regex, ::parse)
-    .count()
+fun part2(input: String) = getRegisters(input).let { registers->
+    repeat(6) { r->
+        repeat(40) { c->
+            if (c in registers[r*40+c].let { (it-1..it+1) }) print("[]")
+            else print("  ")
+        }
+        println()
+    }
+    ""
+}
