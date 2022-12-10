@@ -1,9 +1,8 @@
 package day9
 
+import execute
 import readAllText
 import kotlin.math.sign
-import kotlin.time.DurationUnit
-import kotlin.time.measureTime
 
 enum class Direction { U, D, L, R }
 data class Pos(val r: Int, val c: Int) {
@@ -70,7 +69,8 @@ private fun moveSequence(input: String) = input.lineSequence()
     .map { regex.matchEntire(it) ?: error("WTF `$it`") }
     .map { it.destructured.let { (a, b) -> Direction.valueOf(a) to b.toInt() } }
 
-fun main() = measureTime {
+fun main() {
+    val input = readAllText("local/day9_input.txt")
     val test = """
         R 4
         U 4
@@ -91,10 +91,9 @@ fun main() = measureTime {
         L 25
         U 20
     """.trimIndent()
-    println(part1(test))
-    println(part2(test))
-    println(part2(test2))
-    val input = readAllText("local/day9_input.txt")
-    println(part1(input))
-    println(part2(input))
-}.let { println(it.toString(DurationUnit.SECONDS, 3)) }
+    execute(::part1, test, 13)
+    execute(::part1, input)
+    execute(::part2, test, 1)
+    execute(::part2, test2, 36)
+    execute(::part2, input)
+}

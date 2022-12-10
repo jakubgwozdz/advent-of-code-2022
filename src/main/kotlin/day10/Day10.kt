@@ -1,11 +1,11 @@
 package day10
 
+import execute
 import readAllText
-import kotlin.time.DurationUnit
-import kotlin.time.measureTime
 
-fun main() = measureTime {
-    val test = """
+fun main() {
+    val input = readAllText("local/day10_input.txt")
+    val example = """
         addx 15
         addx -11
         addx 6
@@ -154,11 +154,13 @@ fun main() = measureTime {
         noop
     """.trimIndent()
 
-    println(part1(test))
-    println(part2(test))
-    println(part1(readAllText("local/day10_input.txt")))
-    println(part2(readAllText("local/day10_input.txt")))
-}.let { println(it.toString(DurationUnit.SECONDS, 3)) }
+    execute(::part1, example, 13141)
+    execute(::part2, example)
+
+    execute(::part1, input, 12740)
+    execute(::part2, input)
+
+}
 
 private fun getRegisters(input: String) = sequence {
     var x = 1

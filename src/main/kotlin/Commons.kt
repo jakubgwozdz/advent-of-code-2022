@@ -1,5 +1,9 @@
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.jvm.internal.FunctionReference
+import kotlin.jvm.internal.PackageReference
+import kotlin.time.DurationUnit
+import kotlin.time.TimeSource.Monotonic.markNow
 
 fun readAllText(filePath: String): String = Files.readString(Path.of(filePath))
 
@@ -26,4 +30,22 @@ fun <T> Sequence<T>.splitBy(op: (T) -> Boolean): Sequence<List<T>> = with(iterat
         }
         yield(buffer)
     }
+}
+
+@Suppress("NOTHING_TO_INLINE")
+inline fun <T> execute(noinline op: (String) -> T, input: String, expected: T? = null) {
+    val mark = markNow()
+    val result = try {
+        op(input).also { if (expected != null) check(it == expected) { "Expected `$expected`, got `$it`" } }
+            .toString()
+    } catch (e: Exception) {
+        e.printStackTrace()
+        e.toString()
+    }
+    val duration = mark.elapsedNow()
+    val code = (op as FunctionReference).let { (it.owner as PackageReference).jClass.packageName + "." + it.name }
+    if (result.contains('\n'))
+        println("$code after ${duration.toString(DurationUnit.MILLISECONDS, 3)} = \n${result.trimEnd()}")
+    else
+        println("$code after ${duration.toString(DurationUnit.MILLISECONDS, 3)} = $result")
 }
