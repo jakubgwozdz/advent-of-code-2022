@@ -1,4 +1,3 @@
-import org.intellij.lang.annotations.Language
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.time.Duration.Companion.seconds
@@ -53,12 +52,20 @@ import day8.part2 as day8part2
 import day9.part1 as day9part1
 import day9.part2 as day9part2
 
-fun main() {
-    generateKotlinFiles()
-    benchmark()
+private fun runFor(filename: String, vararg ops: (String) -> Any) {
+    val file = filename
+    if (Files.exists(Path.of(file))) {
+        val input = readAllText(file)
+        ops.forEach { op ->
+            val mark = TimeSource.Monotonic.markNow()
+            while (mark.elapsedNow() < 1.seconds) op(input)
+            execute(op, input)
+        }
+    }
 }
 
-fun benchmark() {
+
+fun main() {
     runFor("local/day1_input.txt", ::day1part1, ::day1part2)
     runFor("local/day2_input.txt", ::day2part1, ::day2part2)
     runFor("local/day3_input.txt", ::day3part1, ::day3part2)
@@ -85,58 +92,3 @@ fun benchmark() {
     runFor("local/day24_input.txt", ::day24part1, ::day24part2)
     runFor("local/day25_input.txt", ::day25part1)
 }
-
-private fun runFor(filename: String, vararg ops: (String) -> Any) {
-    val file = filename
-    if (Files.exists(Path.of(file))) {
-        val input = readAllText(file)
-        ops.forEach { op ->
-            val mark = TimeSource.Monotonic.markNow()
-            while (mark.elapsedNow() < 1.seconds) op(input)
-            execute(op, input)
-        }
-    }
-}
-
-private fun generateKotlinFiles() {
-    @Language("kotlin") val content = """
-        package day0
-        
-        import parseRecords
-        import readAllText
-        import execute
-                
-        fun part1(input: String) = input.parseRecords(regex, ::parse)
-            .count()
-        
-        fun part2(input: String) = input.parseRecords(regex, ::parse)
-            .count()
-        
-        private val regex = "(.+)".toRegex()
-        private fun parse(matchResult: MatchResult) = matchResult.destructured.let { (a) -> a }
-        
-        fun main() {
-            val input = readAllText("local/day0_input.txt")
-            val test = ""${'"'}
-                
-            ""${'"'}.trimIndent()
-            execute(::part1, test, )
-            execute(::part1, input, )
-            execute(::part2, test, )
-            execute(::part2, input, )
-        }
-
-    """.trimIndent()
-
-
-    (1..25).forEach { day ->
-        val srcPath = Path.of("src/main/kotlin/day${day}/Day${day}.kt")
-        val inputPath = Path.of("local/day${day}_input.txt")
-
-        if (!Files.exists(inputPath)) {
-            Files.createDirectories(srcPath.parent)
-            Files.writeString(srcPath, content.replace("day0", "day$day"))
-        }
-    }
-}
-
