@@ -29,7 +29,10 @@ private val regex = "move (\\d+) from (.) to (.)".toRegex()
 private fun parse(matchResult: MatchResult) =
     matchResult.destructured.let { (a, b, c) -> Triple(a.toInt(), b.single(), c.single()) }
 
-fun part1(input: String, moveAllAtOnce: Boolean = false): String {
+fun part1(input: String) = solve(input, moveAllAtOnce = false)
+fun part2(input: String) = solve(input, moveAllAtOnce = true)
+
+private fun solve(input: String, moveAllAtOnce: Boolean): String {
     val (stacksSection, commands) = input.lineSequence().splitBy(String::isBlank).toList()
     val stacks = parseStacks(stacksSection).toMutableMap()
     commands.map { regex.matchEntire(it)?.let(::parse) ?: error("WTF `$it`") }
@@ -59,5 +62,3 @@ private fun MutableMap<Char, String>.move(from: Char, to: Char, count: Int, move
     this[from] = this[from]!!.dropLast(count)
     this[to] = this[to]!! + if (moveAllAtOnce) crates else crates.reversed()
 }
-
-fun part2(input: String) = part1(input, moveAllAtOnce = true)
