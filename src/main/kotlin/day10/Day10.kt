@@ -1,6 +1,5 @@
 package day10
 
-import parseRecords
 import readAllText
 import kotlin.time.DurationUnit
 import kotlin.time.measureTime
@@ -161,29 +160,28 @@ fun main() = measureTime {
     println(part2(readAllText("local/day10_input.txt")))
 }.let { println(it.toString(DurationUnit.SECONDS, 3)) }
 
-fun part1(input: String) = getRegisters(input)
-    .mapIndexed { index: Int, l -> (index + 1) to if ((index + 21) % 40 == 0) l else 0 }
-    .sumOf { (cycle, x) -> cycle * x }
-
-private fun getRegisters(input: String) = buildList {
+private fun getRegisters(input: String) = sequence {
     var x = 1
     input.lineSequence().filterNot(String::isBlank).toList().forEach { command ->
-        add(x)
+        yield(x)
         if (command.startsWith("addx")) {
-            add(x)
+            yield(x)
             x += command.substringAfter("addx ").toInt()
         }
     }
 }
 
+fun part1(input: String) = getRegisters(input)
+    .mapIndexed { index: Int, l -> (index + 1) * if ((index + 21) % 40 == 0) l else 0 }
+    .sum()
 
-fun part2(input: String) = getRegisters(input).let { registers->
-    repeat(6) { r->
-        repeat(40) { c->
-            if (c in registers[r*40+c].let { (it-1..it+1) }) print("[]")
-            else print("  ")
+fun part2(input: String) = buildString {
+    val registers = getRegisters(input).iterator()
+    repeat(6) {
+        repeat(40) { c ->
+            val sprite = registers.next()
+            if (sprite - c in -1..1) append("[]") else append("  ")
         }
-        println()
+        appendLine()
     }
-    ""
 }
