@@ -1,6 +1,7 @@
 package day7
 
 import readAllText
+import wtf
 import kotlin.time.DurationUnit
 import kotlin.time.measureTime
 
@@ -52,7 +53,7 @@ private fun parse(input: String) = input.lineSequence().filterNot(String::isBlan
             command.startsWith("dir ") -> filesystem.addDir(command.substringAfter("dir "))
             command.first().isDigit() -> filesystem.addFile(command.substringBefore(" ").toInt())
             command == "$ ls" -> filesystem.resetCwd()
-            else -> error("WTF `$command`")
+            else -> wtf(command)
         }
     }
 

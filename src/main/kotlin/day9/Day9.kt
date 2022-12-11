@@ -2,6 +2,7 @@ package day9
 
 import execute
 import readAllText
+import wtf
 import kotlin.math.sign
 
 enum class Direction { U, D, L, R }
@@ -66,7 +67,7 @@ fun State.printIt() {
 private val regex = "(.) (\\d+)".toRegex()
 private fun moveSequence(input: String) = input.lineSequence()
     .filterNot(String::isBlank)
-    .map { regex.matchEntire(it) ?: error("WTF `$it`") }
+    .map { regex.matchEntire(it) ?: wtf(it) }
     .map { it.destructured.let { (a, b) -> Direction.valueOf(a) to b.toInt() } }
 
 fun main() {

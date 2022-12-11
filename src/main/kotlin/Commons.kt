@@ -9,12 +9,16 @@ fun readAllText(filePath: String): String = Files.readString(Path.of(filePath))
 
 fun <R> String.parseRecords(regex: Regex, op: (MatchResult) -> R): Sequence<R> =
     lineSequence().filterNot(String::isBlank)
-        .map { regex.matchEntire(it) ?: error("WTF `$it`") }
+        .map { regex.matchEntire(it) ?: wtf(it) }
         .map(op)
 
 fun <R> String.parseRecords(op: (String) -> R): Sequence<R> =
     lineSequence().filterNot(String::isBlank)
         .map(op)
+
+fun <T> String.parse(regex: Regex, op: (MatchResult.Destructured) -> T): T =
+    (regex.matchEntire(this) ?: wtf(this)).destructured.let(op)
+
 
 fun <T> Sequence<T>.splitBy(op: (T) -> Boolean): Sequence<List<T>> = with(iterator()) {
     sequence {
@@ -49,3 +53,6 @@ inline fun <T> execute(noinline op: (String) -> T, input: String, expected: T? =
     else
         println("$code after ${duration.toString(DurationUnit.MILLISECONDS, 3)} => $result")
 }
+
+@Suppress("NOTHING_TO_INLINE")
+inline fun wtf(a: Any): Nothing = error("WTF `$a`")

@@ -3,6 +3,7 @@
 package day2
 
 import readAllText
+import wtf
 import kotlin.time.DurationUnit
 import kotlin.time.measureTime
 
@@ -32,7 +33,7 @@ private fun part1result(it: String) = when (it) {
     "A Z" -> C + LOSE
     "B Z" -> C + WIN
     "C Z" -> C + DRAW
-    else -> error("WTF `$it`")
+    else -> wtf(it)
 }
 
 private fun part2result(it: String) = when (it) {
@@ -45,5 +46,5 @@ private fun part2result(it: String) = when (it) {
     "A Z" -> B + WIN
     "B Z" -> C + WIN
     "C Z" -> A + WIN
-    else -> error("WTF `$it`")
+    else -> wtf(it)
 }

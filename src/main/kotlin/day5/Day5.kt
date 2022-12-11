@@ -2,6 +2,7 @@ package day5
 
 import readAllText
 import splitBy
+import wtf
 import kotlin.time.DurationUnit
 import kotlin.time.measureTime
 
@@ -35,7 +36,7 @@ fun part2(input: String) = solve(input, moveAllAtOnce = true)
 private fun solve(input: String, moveAllAtOnce: Boolean): String {
     val (stacksSection, commands) = input.lineSequence().splitBy(String::isBlank).toList()
     val stacks = parseStacks(stacksSection).toMutableMap()
-    commands.map { regex.matchEntire(it)?.let(::parse) ?: error("WTF `$it`") }
+    commands.map { regex.matchEntire(it)?.let(::parse) ?: wtf(it) }
         .forEach { (count, from, to) -> stacks.move(from, to, count, moveAllAtOnce) }
 
     return stacks.toList().sortedBy { it.first }.map { it.second.last() }.joinToString("")
