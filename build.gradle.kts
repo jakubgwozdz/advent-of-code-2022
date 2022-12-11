@@ -5,6 +5,6 @@ plugins {
 
 repositories.mavenCentral()
 
-application.mainClass.set("MainKt")
+application.mainClass.set("BenchmarkKt")
 
 tasks.compileKotlin { kotlinOptions.freeCompilerArgs += "-opt-in=kotlin.time.ExperimentalTime" }

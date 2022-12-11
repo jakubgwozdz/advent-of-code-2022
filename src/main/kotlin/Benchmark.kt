@@ -1,6 +1,6 @@
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.TimeSource
 import day1.part1 as day1part1
 import day1.part2 as day1part2
@@ -58,14 +58,14 @@ private fun runFor(filename: String, vararg ops: (String) -> Any) {
         val input = readAllText(file)
         ops.forEach { op ->
             val mark = TimeSource.Monotonic.markNow()
-            while (mark.elapsedNow() < 1.seconds) op(input)
+            while (mark.elapsedNow() < 10.milliseconds) op(input)
             execute(op, input)
         }
     }
 }
 
 
-fun main() {
+fun main() = repeat(2) {
     runFor("local/day1_input.txt", ::day1part1, ::day1part2)
     runFor("local/day2_input.txt", ::day2part1, ::day2part2)
     runFor("local/day3_input.txt", ::day3part1, ::day3part2)

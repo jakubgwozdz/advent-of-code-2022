@@ -14,8 +14,7 @@ data class Monkey(
 )
 
 private fun parseMonkey(lines: List<String>): Monkey {
-    val id = ("Monkey (\\d+):".toRegex().matchEntire(lines[0]) ?: wtf(lines[0]))
-        .destructured.let { (a) -> a.toInt() }
+    val id = lines[0].substringAfter("Monkey ").substringBefore(":").toInt()
     val items = lines[1].substringAfter("Starting items: ").split(", ").map { it.toLong() }.toMutableList()
     val op = lines[2].substringAfter("Operation: new = ").let {
         when {
@@ -93,5 +92,5 @@ fun main() {
     execute(::part1, test, 10605)
     execute(::part1, input, 111210)
     execute(::part2, test, 2713310158)
-    execute(::part2, input)
+    execute(::part2, input, 15447387620)
 }
