@@ -1,6 +1,9 @@
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.ZERO
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.DurationUnit
 import kotlin.time.TimeSource
 import day1.part1 as day1part1
 import day1.part2 as day1part2
@@ -37,6 +40,7 @@ import day23.part2 as day23part2
 import day24.part1 as day24part1
 import day24.part2 as day24part2
 import day25.part1 as day25part1
+import day25.part2 as day25part2
 import day3.part1 as day3part1
 import day3.part2 as day3part2
 import day4.part1 as day4part1
@@ -52,43 +56,49 @@ import day8.part2 as day8part2
 import day9.part1 as day9part1
 import day9.part2 as day9part2
 
-private fun runFor(filename: String, vararg ops: (String) -> Any) {
+private fun runFor(filename: String, vararg ops: (String) -> Any): Duration {
     val file = filename
-    if (Files.exists(Path.of(file))) {
+    return if (Files.exists(Path.of(file))) {
         val input = readAllText(file)
-        ops.forEach { op ->
+        ops.fold(ZERO) { acc, op ->
             val mark = TimeSource.Monotonic.markNow()
-            while (mark.elapsedNow() < 10.milliseconds) op(input)
-            execute(op, input)
+            while (mark.elapsedNow() < 100.milliseconds) op(input)
+            acc + execute(op, input, printResult = false)
         }
-    }
+    } else ZERO
 }
 
 
 fun main() = repeat(2) {
-    runFor("local/day1_input.txt", ::day1part1, ::day1part2)
-    runFor("local/day2_input.txt", ::day2part1, ::day2part2)
-    runFor("local/day3_input.txt", ::day3part1, ::day3part2)
-    runFor("local/day4_input.txt", ::day4part1, ::day4part2)
-    runFor("local/day5_input.txt", ::day5part1, ::day5part2)
-    runFor("local/day6_input.txt", ::day6part1, ::day6part2)
-    runFor("local/day7_input.txt", ::day7part1, ::day7part2)
-    runFor("local/day8_input.txt", ::day8part1, ::day8part2)
-    runFor("local/day9_input.txt", ::day9part1, ::day9part2)
-    runFor("local/day10_input.txt", ::day10part1, ::day10part2)
-    runFor("local/day11_input.txt", ::day11part1, ::day11part2)
-    runFor("local/day12_input.txt", ::day12part1, ::day12part2)
-    runFor("local/day13_input.txt", ::day13part1, ::day13part2)
-    runFor("local/day14_input.txt", ::day14part1, ::day14part2)
-    runFor("local/day15_input.txt", ::day15part1, ::day15part2)
-    runFor("local/day16_input.txt", ::day16part1, ::day16part2)
-    runFor("local/day17_input.txt", ::day17part1, ::day17part2)
-    runFor("local/day18_input.txt", ::day18part1, ::day18part2)
-    runFor("local/day19_input.txt", ::day19part1, ::day19part2)
-    runFor("local/day20_input.txt", ::day20part1, ::day20part2)
-    runFor("local/day21_input.txt", ::day21part1, ::day21part2)
-    runFor("local/day22_input.txt", ::day22part1, ::day22part2)
-    runFor("local/day23_input.txt", ::day23part1, ::day23part2)
-    runFor("local/day24_input.txt", ::day24part1, ::day24part2)
-    runFor("local/day25_input.txt", ::day25part1)
+    val runs = listOf(
+        Triple("local/day1_input.txt", ::day1part1, ::day1part2),
+        Triple("local/day2_input.txt", ::day2part1, ::day2part2),
+        Triple("local/day3_input.txt", ::day3part1, ::day3part2),
+        Triple("local/day4_input.txt", ::day4part1, ::day4part2),
+        Triple("local/day5_input.txt", ::day5part1, ::day5part2),
+        Triple("local/day6_input.txt", ::day6part1, ::day6part2),
+        Triple("local/day7_input.txt", ::day7part1, ::day7part2),
+        Triple("local/day8_input.txt", ::day8part1, ::day8part2),
+        Triple("local/day9_input.txt", ::day9part1, ::day9part2),
+        Triple("local/day10_input.txt", ::day10part1, ::day10part2),
+        Triple("local/day11_input.txt", ::day11part1, ::day11part2),
+        Triple("local/day12_input.txt", ::day12part1, ::day12part2),
+        Triple("local/day13_input.txt", ::day13part1, ::day13part2),
+        Triple("local/day14_input.txt", ::day14part1, ::day14part2),
+        Triple("local/day15_input.txt", ::day15part1, ::day15part2),
+        Triple("local/day16_input.txt", ::day16part1, ::day16part2),
+        Triple("local/day17_input.txt", ::day17part1, ::day17part2),
+        Triple("local/day18_input.txt", ::day18part1, ::day18part2),
+        Triple("local/day19_input.txt", ::day19part1, ::day19part2),
+        Triple("local/day20_input.txt", ::day20part1, ::day20part2),
+        Triple("local/day21_input.txt", ::day21part1, ::day21part2),
+        Triple("local/day22_input.txt", ::day22part1, ::day22part2),
+        Triple("local/day23_input.txt", ::day23part1, ::day23part2),
+        Triple("local/day24_input.txt", ::day24part1, ::day24part2),
+        Triple("local/day25_input.txt", ::day25part1, ::day25part2),
+    )
+    runs.fold(ZERO) { acc, (input, op1, op2) ->
+        acc + runFor(input, op1, op2)
+    }
+        .also { println("TOTAL: ${it.toString(DurationUnit.MILLISECONDS, 3)}") }
 }
