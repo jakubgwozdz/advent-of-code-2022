@@ -29,12 +29,12 @@ fun part2(input: String): Int = input.lineSequence().filterNot(String::isBlank)
         )!!
     }
 
-fun List<String>.possibleUp(from: Pair<Int, Int>) = possibleMoves(from) { curr, next ->
+fun List<String>.possibleUp(from: Pair<Int, Int>): List<Pair<Int, Int>> = possibleMoves(from) { curr, next ->
     (next.isLowerCase() && curr.isLowerCase() && next <= curr) || next == curr + 1 ||
             (curr == 'S' && next == 'a') || (curr == 'z' && next == 'E')
 }
 
-fun List<String>.possibleDown(from: Pair<Int, Int>) = possibleMoves(from) { curr, next ->
+fun List<String>.possibleDown(from: Pair<Int, Int>): List<Pair<Int, Int>> = possibleMoves(from) { curr, next ->
     (next.isLowerCase() && curr.isLowerCase() && next >= curr) || next == curr - 1 ||
             (curr == 'E' && next == 'z')
 }

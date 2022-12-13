@@ -95,13 +95,9 @@ inline fun <T> execute(
     printResult: Boolean = true
 ): Duration {
     val mark = markNow()
-    val result = try {
+    val result =
         op(input).also { if (expected != null) check(it == expected) { "Expected `$expected`, got `$it`" } }
             .toString()
-    } catch (e: Exception) {
-        e.printStackTrace()
-        e.toString()
-    }
     val duration = mark.elapsedNow()
     val code = (op as FunctionReference).let { "${(it.owner as PackageReference).jClass.packageName}.${it.name}()" }
     if (!printResult)
