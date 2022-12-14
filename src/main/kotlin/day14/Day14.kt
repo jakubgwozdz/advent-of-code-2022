@@ -4,9 +4,20 @@ import execute
 import readAllText
 import wtf
 
-typealias Cave = MutableSet<Pair<Int, Int>>
+class Cave(val abyss: Int) {
+    private val data: Array<BooleanArray> = Array(abyss + 2) { BooleanArray(abyss * 2 + 6) }
+    private val offset: Int = 500 - abyss - 3
 
-private fun Cave.abyssLevel() = maxOf { it.second } + 2
+    operator fun plusAssign(point: Pair<Int, Int>) {
+        val (x, y) = point
+        data[y][x - offset] = true
+    }
+
+    operator fun contains(point: Pair<Int, Int>): Boolean {
+        val (x, y) = point
+        return y in data.indices && (x - offset) in data[y].indices && data[y][x - offset]
+    }
+}
 
 fun part1(input: String) = input
     .let(::buildData)
@@ -15,14 +26,14 @@ fun part1(input: String) = input
 fun part2(input: String) = input
     .let(::buildData)
     .also { data ->
-        val bottom = data.abyssLevel()
+        val bottom = data.abyss
         (500 - bottom - 1..500 + bottom + 1).forEach { data += it to bottom }
     }
     .let(::simulate)
 
 private fun simulate(data: Cave): Int {
     val start = 500 to 0
-    val abyssLevel = data.abyssLevel()
+    val abyssLevel = data.abyss
     var count = 0
     var abyss = false
     while (start !in data && !abyss) {
@@ -53,21 +64,25 @@ private fun simulate(data: Cave): Int {
 
 private fun buildData(input: String): Cave = input.lineSequence().filterNot(String::isBlank)
     .map { it.split(" -> ").map { s -> s.split(",").let { (x, y) -> (x.toInt() to y.toInt()) } } }
-    .fold(mutableSetOf<Pair<Int, Int>>()) { acc, lines ->
-        lines.windowed(2).map { (s, e) ->
+    .flatMap { it.windowed(2) }
+    .map { (s, e) -> s to e }
+    .toList()
+    .let { lines ->
+        val abyss = lines.maxOf { maxOf(it.first.second, it.second.second) } + 2
+        val result = Cave(abyss)
+        lines.forEach { (s, e) ->
             val (sx, sy) = s
             val (ex, ey) = e
-            when {
+            val range = when {
                 sx < ex -> (sx..ex).map { it to ey }
                 sx > ex -> (sx downTo ex).map { it to ey }
                 sy < ey -> (sy..ey).map { ex to it }
                 sy > ey -> (sy downTo ey).map { ex to it }
                 else -> wtf(s to e)
-            }
-        }.forEach { range ->
-            acc.addAll(range)
+            }.forEach { p -> result += p }
+
         }
-        acc
+        result
     }
 
 fun main() {
