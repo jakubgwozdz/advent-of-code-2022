@@ -1,5 +1,6 @@
 package day14
 
+import Stack
 import execute
 import readAllText
 import wtf
@@ -32,29 +33,33 @@ fun part2(input: String) = input
     .let(::simulate)
 
 private fun simulate(data: Cave): Int {
-    val start = 500 to 0
-    val abyssLevel = data.abyss
+    val starts = Stack<Pair<Int, Int>>().apply { offer(500 to 0) }
     var count = 0
-    var abyss = false
-    while (start !in data && !abyss) {
-        var (x, y) = start
+    var abyssHit = false
+    while (starts.isNotEmpty() && !abyssHit) {
+        var (x, y) = starts.poll()
         var rest = false
-        while (!rest && !abyss) when {
-            y > abyssLevel -> abyss = true
+        while (!rest && !abyssHit) when {
+            y > data.abyss -> abyssHit = true
 
-            x to y + 1 !in data -> y += 1
+            x to y + 1 !in data -> {
+                starts.offer(x to y)
+                y += 1
+            }
 
             x - 1 to y + 1 !in data -> {
+                starts.offer(x to y)
                 x -= 1; y += 1
             }
 
             x + 1 to y + 1 !in data -> {
+                starts.offer(x to y)
                 x += 1; y += 1
             }
 
             else -> rest = true
         }
-        if (!abyss) {
+        if (!abyssHit) {
             data += x to y
             count++
         }
@@ -73,14 +78,13 @@ private fun buildData(input: String): Cave = input.lineSequence().filterNot(Stri
         lines.forEach { (s, e) ->
             val (sx, sy) = s
             val (ex, ey) = e
-            val range = when {
+            when {
                 sx < ex -> (sx..ex).map { it to ey }
                 sx > ex -> (sx downTo ex).map { it to ey }
                 sy < ey -> (sy..ey).map { ex to it }
                 sy > ey -> (sy downTo ey).map { ex to it }
                 else -> wtf(s to e)
             }.forEach { p -> result += p }
-
         }
         result
     }

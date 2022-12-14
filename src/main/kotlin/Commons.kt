@@ -39,24 +39,48 @@ fun <T> Sequence<T>.splitBy(op: (T) -> Boolean): Sequence<List<T>> = with(iterat
 
 open class Queue<E : Any> {
 
-    protected var queue: ArrayList<E> = ArrayList(11)
+    protected var backing: ArrayList<E> = ArrayList(11)
 
-    val size get() = queue.size
+    val size get() = backing.size
 
     fun isNotEmpty(): Boolean = size > 0
 
     fun peek(): E {
         check(size > 0)
-        return queue[0]
+        return backing[0]
     }
 
     fun poll(): E {
         check(size > 0)
-        return queue.removeAt(0)
+        return backing.removeAt(0)
     }
 
     open fun offer(e: E) {
-        queue.add(e)
+        backing.add(e)
+    }
+
+}
+
+open class Stack<E : Any> {
+
+    protected var backing: ArrayList<E> = ArrayList(11)
+
+    val size get() = backing.size
+
+    fun isNotEmpty(): Boolean = size > 0
+
+    fun peek(): E {
+        check(size > 0)
+        return backing[backing.lastIndex]
+    }
+
+    fun poll(): E {
+        check(size > 0)
+        return backing.removeAt(backing.lastIndex)
+    }
+
+    open fun offer(e: E) {
+        backing.add(e)
     }
 
 }
