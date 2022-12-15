@@ -56,20 +56,20 @@ import day8.part2 as day8part2
 import day9.part1 as day9part1
 import day9.part2 as day9part2
 
-private fun runFor(filename: String, vararg ops: (String) -> Any): Duration {
+private fun runFor(filename: String, warmup: Boolean, vararg ops: (String) -> Any): Duration {
     val file = filename
     return if (Files.exists(Path.of(file))) {
         val input = readAllText(file)
         ops.fold(ZERO) { acc, op ->
             val mark = TimeSource.Monotonic.markNow()
-            while (mark.elapsedNow() < 100.milliseconds) op(input)
+            if (warmup) while (mark.elapsedNow() < 1000.milliseconds) op(input)
             acc + execute(op, input, printResult = false)
         }
     } else ZERO
 }
 
 
-fun main() = repeat(2) {
+fun main() {
     val runs = listOf(
         Triple("local/day1_input.txt", ::day1part1, ::day1part2),
         Triple("local/day2_input.txt", ::day2part1, ::day2part2),
@@ -97,8 +97,20 @@ fun main() = repeat(2) {
         Triple("local/day24_input.txt", ::day24part1, ::day24part2),
         Triple("local/day25_input.txt", ::day25part1, ::day25part2),
     )
-    runs.fold(ZERO) { acc, (input, op1, op2) ->
-        acc + runFor(input, op1, op2)
-    }
-        .also { println("TOTAL: ${it.toString(DurationUnit.MILLISECONDS, 3)}") }
+
+    runs
+        .fold(ZERO) { acc, (input, op1, op2) ->
+            acc + runFor(input, false, op1, op2)
+        }
+        .also {
+            println("COLD TOTAL: ${it.toString(DurationUnit.MILLISECONDS, 3)}")
+        }
+
+    runs
+        .fold(ZERO) { acc, (input, op1, op2) ->
+            acc + runFor(input, true, op1, op2)
+        }
+        .also {
+            println("WARMED UP TOTAL: ${it.toString(DurationUnit.MILLISECONDS, 3)}")
+        }
 }
