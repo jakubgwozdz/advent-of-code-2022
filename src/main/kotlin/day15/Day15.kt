@@ -5,6 +5,18 @@ import parseRecords
 import readAllText
 import kotlin.math.absoluteValue
 
+private fun Pair<Long, Long>.rotate45ish() = let { (x0, y0) ->
+    val x1 = x0 - y0
+    val y1 = x0 + y0
+    x1 to y1
+}
+
+private fun Pair<Long, Long>.rotateBack45ish() = let { (x1, y1) ->
+    val x0 = (x1 + y1) / 2
+    val y0 = x0 - x1
+    x0 to y0
+}
+
 tailrec fun LongRange.splitRange(
     cuts: List<Long>,
     cutIndex: Int = 0,
@@ -22,12 +34,11 @@ tailrec fun LongRange.splitRange(
         )
     }
 
-fun <T> List<T>.merge(predicate: (T, T) -> Boolean, mergeOp: (T, T) -> T): List<T> =
+fun <T> List<T>.merge(mergeOp: (T, T) -> List<T>): List<T> =
     fold<T, MutableList<T>>(mutableListOf()) { acc, t ->
         acc.apply {
             if (isEmpty()) add(t)
-            else if (predicate(last(), t)) add(mergeOp(removeLast(), t))
-            else add(t)
+            else addAll(mergeOp(removeLast(), t))
         }
     }.toList()
 
@@ -59,20 +70,14 @@ fun part1(input: String): Long {
 }
 
 fun part2(input: String): Long {
-    val data = input.parseRecords(regex, ::parse).toList()
-    val sensors = data.map { (sensor, beacon) ->
+    val sensors = input.parseRecords(regex, ::parse).map { (sensor, beacon) ->
         val (sx, sy) = sensor
         val (bx, by) = beacon
         val dist = (sx - bx).absoluteValue + (sy - by).absoluteValue
         sensor to dist
-    }
+    }.toList()
 
-    val sensors45 = sensors.map { (s, r) ->
-        val (x0, y0) = s
-        val x1 = x0 - y0
-        val y1 = x0 + y0
-        x1 to y1 to r
-    }
+    val sensors45 = sensors.map { (s, r) -> s.rotate45ish() to r }
 
     val ranges45 = sensors45.map { (s, d) ->
         val (x, y) = s
@@ -80,40 +85,34 @@ fun part2(input: String): Long {
     }
 
     val horizCuts45 = buildSet { ranges45.forEach { (h, v) -> add(h.first); add(h.last) } }
-        .toList().sorted()
+        .sorted()
 
     val vertCuts45 = buildSet { ranges45.forEach { (h, v) -> add(v.first); add(v.last) } }
-        .toList().sorted()
+        .sorted()
 
     val blocks45: List<Pair<LongRange, List<LongRange>>> = ranges45.flatMap { (h, v) ->
         h.splitRange(horizCuts45).flatMap { hh -> v.splitRange(vertCuts45).map { vv -> hh to vv } }
     }
-        .asSequence()
         .sortedWith(compareBy<Pair<LongRange, LongRange>> { it.first.first }.thenBy { it.first.last }
             .thenBy { it.second.first }.thenBy { it.second.last })
         .groupBy { it.first }.map { (h, l) -> h to l.map { it.second } }
-        .map { (h, vl) ->
-            h to vl.merge(
-                predicate = { a, b -> a.last >= b.first - 1 },
-                mergeOp = { a, b -> a.first..b.last }
-            )
-        }
-        .merge(
-            predicate = { (a, al), (b, bl) -> a.last >= b.first - 1 && al == bl },
-            mergeOp = { (a, al), (b, bl) -> a.first..b.last to al }
-        )
 
-    val invalid45 = blocks45.first { it.second.size > 1 }
+    val mergedBlocks45 = blocks45.map { (h, vl) ->
+        h to vl.merge { a, b -> if (a.last >= b.first - 1) listOf(a.first..b.last) else listOf(a, b) }
+    }
+        .merge { (a, al), (b, bl) ->
+            if (a.last >= b.first - 1 && al == bl) listOf(a.first..b.last to al)
+            else listOf(a to al, b to bl)
+        }
+
+    val broken45 = mergedBlocks45.first { it.second.size > 1 }
         .let { (h, vl) -> h.single() to vl.first().last + 1 }
 
-    val invalid = invalid45.let { (x1, y1) ->
-        val x0 = (x1 + y1) / 2
-        val y0 = x0 - x1
-        x0 to y0
-    }
+    val broken = broken45.rotateBack45ish()
 
-    return invalid.let { (x, y) -> y + x * 4000000 }
+    return broken.let { (x, y) -> y + x * 4000000 }
 }
+
 
 private val regex = "Sensor at x=(-?\\d+), y=(-?\\d+): closest beacon is at x=(-?\\d+), y=(-?\\d+)".toRegex()
 private fun parse(matchResult: MatchResult) = matchResult.destructured.let { (a, b, c, d) ->
