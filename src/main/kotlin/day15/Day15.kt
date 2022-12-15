@@ -5,9 +5,16 @@ import parseRecords
 import readAllText
 import kotlin.math.absoluteValue
 
-fun part1(input: String): Int {
+fun splitRange(s: Long, e: Long, cuts: List<Long>): List<Pair<Long, Long>> =
+    if (cuts.isEmpty()) listOf(s to e)
+    else if (cuts.first() < s) splitRange(s, e, cuts.drop(1))
+    else if (cuts.first() > e) listOf(s to e)
+    else listOf(s to cuts.first() - 1, cuts.first() to cuts.first()) +
+            splitRange(cuts.first() + 1, e, cuts.drop(1))
+
+fun part1(input: String): Long {
     val data = input.parseRecords(regex, ::parse).toList()
-    val y = if (data.first().first.first == 2) 10 else 2000000
+    val y = if (data.first().first.first == 2L) 10L else 2000000L
     val ranges = data
         .map { (sensor, beacon) ->
             val (sx, sy) = sensor
@@ -17,35 +24,53 @@ fun part1(input: String): Int {
             sx - dist10 to sx + dist10
         }
         .filter { (s, e) -> s <= e }
+        .sortedWith(compareBy<Pair<Long, Long>> { it.first }.thenBy { it.second })
 
-    var size = ranges.sumOf { (s, e) -> e - s + 1 }
-
-    ranges.forEachIndexed { i0, r0 ->
-        val (s0, e0) = r0
-        ranges.drop(i0 + 1).forEach { r1 ->
-            val (s1, e1) = r1
-            val common = if (s1 <= s0) {
-                if (e1 >= e0) s0..e0
-                else if (e1 >= s0) s0..e1
-                else IntRange.EMPTY
-            } else if (s1 <= e0) {
-                if (e1 >= e0) s1..e0
-                else s1..e1
-            } else IntRange.EMPTY
-
-            println("size $size, $r0 and $r1 have $common common")
-            size -= common.last - common.first + 1
+    val cuts = buildSet { ranges.forEach { (s, e) -> add(s); add(e) } }
+        .toList().sorted()
+    val splitRanges = buildSet {
+        ranges.forEach { (s, e) ->
+            addAll(splitRange(s, e, cuts).filter { (s, e) -> s <= e })
         }
     }
-    return size
+        .sortedBy { it.first }
+
+    return splitRanges.sumOf { (s, e) -> e - s + 1 } -
+            data.map { it.second }.filter { it.second == y }.toSet().size
 }
 
-fun part2(input: String) = input.parseRecords(regex, ::parse)
-    .count()
+fun part2(input: String): Long {
+    val data = input.parseRecords(regex, ::parse).toList()
+    val max = if (data.first().first.first == 2L) 20L else 4000000L
+    return (0..max).asSequence().map { y ->
+        val ranges = data
+            .map { (sensor, beacon) ->
+                val (sx, sy) = sensor
+                val (bx, by) = beacon
+                val dist = (sx - bx).absoluteValue + (sy - by).absoluteValue
+                val dist10 = dist - (sy - y).absoluteValue
+                sx - dist10 to sx + dist10
+            }
+            .filter { (s, e) -> s <= e }
+            .sortedWith(compareBy<Pair<Long, Long>> { it.first }.thenBy { it.second })
+
+        if (ranges.first().first > 0) return@map y to listOf(0L)
+
+        var x = ranges.first().second + 1
+
+        for (r in ranges)
+            if (r.first > x) return@map y to listOf(x)
+            else if (r.second + 1 > x) x = r.second + 1
+
+        return@map y to emptyList()
+
+    }.first { (_, l) -> l.isNotEmpty() }
+        .let { (y, l) -> y + l.single() * 4000000 }
+}
 
 private val regex = "Sensor at x=(-?\\d+), y=(-?\\d+): closest beacon is at x=(-?\\d+), y=(-?\\d+)".toRegex()
 private fun parse(matchResult: MatchResult) = matchResult.destructured.let { (a, b, c, d) ->
-    (a.toInt() to b.toInt()) to (c.toInt() to d.toInt())
+    (a.toLong() to b.toLong()) to (c.toLong() to d.toLong())
 }
 
 fun main() {
@@ -67,7 +92,7 @@ fun main() {
         Sensor at x=20, y=1: closest beacon is at x=15, y=3
     """.trimIndent()
     execute(::part1, test, 26)
-    execute(::part1, input)
-    execute(::part2, test)
+    execute(::part1, input, 5525847)
+    execute(::part2, test, 56000011)
     execute(::part2, input)
 }
