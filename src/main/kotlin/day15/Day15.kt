@@ -5,22 +5,36 @@ import parseRecords
 import readAllText
 import kotlin.math.absoluteValue
 
-fun splitRange(s: Long, e: Long, cuts: List<Long>): List<Pair<Long, Long>> =
-    if (cuts.isEmpty()) listOf(s to e)
-    else if (cuts.first() < s) splitRange(s, e, cuts.drop(1))
-    else if (cuts.first() > e) listOf(s to e)
-    else listOf(s to cuts.first() - 1, cuts.first() to cuts.first()) +
-            splitRange(cuts.first() + 1, e, cuts.drop(1))
+tailrec fun LongRange.splitRange(
+    cuts: List<Long>,
+    cutIndex: Int = 0,
+    acc: List<LongRange> = emptyList()
+): List<LongRange> =
+    if (first > last) acc
+    else if (cuts.lastIndex < cutIndex) acc + listOf(this)
+    else {
+        val c = cuts[cutIndex]
+        if (c < first) splitRange(cuts, cutIndex + 1, acc)
+        else (c + 1..last).splitRange(
+            cuts,
+            cutIndex + 1,
+            acc + listOf(first until c, c..c).filter { it.first <= it.last }
+        )
+    }
 
 fun part1(input: String): Long {
     val data = input.parseRecords(regex, ::parse).toList()
-    val y = if (data.first().first.first == 2L) 10L else 2000000L
+    val testLine = if (data.first().first.first == 2L) 10L else 2000000L
+    val beaconsAlreadyOnTestLine = data
+        .map { (_, beacon) -> beacon }
+        .filter { (_, y) -> y == testLine }
+        .toSet().size
     val ranges = data
         .map { (sensor, beacon) ->
             val (sx, sy) = sensor
             val (bx, by) = beacon
             val dist = (sx - bx).absoluteValue + (sy - by).absoluteValue
-            val dist10 = dist - (sy - y).absoluteValue
+            val dist10 = dist - (sy - testLine).absoluteValue
             sx - dist10 to sx + dist10
         }
         .filter { (s, e) -> s <= e }
@@ -28,15 +42,11 @@ fun part1(input: String): Long {
 
     val cuts = buildSet { ranges.forEach { (s, e) -> add(s); add(e) } }
         .toList().sorted()
-    val splitRanges = buildSet {
-        ranges.forEach { (s, e) ->
-            addAll(splitRange(s, e, cuts).filter { (s, e) -> s <= e })
-        }
-    }
-        .sortedBy { it.first }
 
-    return splitRanges.sumOf { (s, e) -> e - s + 1 } -
-            data.map { it.second }.filter { it.second == y }.toSet().size
+    return ranges.flatMap { (s, e) -> (s..e).splitRange(cuts) }
+        .map { it.first to it.last }
+        .filter { (s, e) -> s <= e }
+        .toSet().sumOf { (s, e) -> e - s + 1 } - beaconsAlreadyOnTestLine
 }
 
 fun part2(input: String): Long {
