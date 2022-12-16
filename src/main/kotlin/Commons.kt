@@ -61,6 +61,17 @@ open class Queue<E : Any> {
 
 }
 
+class PriorityQueue<E : Any>(val comparator: Comparator<E>) : Queue<E>() {
+
+    override fun offer(e: E) {
+        val index = backing.binarySearch(e, comparator).let {
+            if (it < 0) -it - 1 else it
+        }
+        backing.add(index, e)
+    }
+
+}
+
 open class Stack<E : Any> {
 
     protected var backing: ArrayList<E> = ArrayList(11)
@@ -91,9 +102,9 @@ fun <T : Any, R : Any> bfs(
     initial: R,
     moveOp: (R, T) -> R,
     endOp: (T) -> Boolean,
+    queue: Queue<Pair<T, R>> = Queue(),
 ): R? {
     val visited = mutableSetOf<T>()
-    val queue = Queue<Pair<T, R>>()
     queue.offer(start to initial)
     var result: R? = null
     while (result == null && queue.isNotEmpty()) {

@@ -91,7 +91,9 @@ fun part2(input: String): Long {
         .sorted()
 
     val blocks45: List<Pair<LongRange, List<LongRange>>> = ranges45.flatMap { (h, v) ->
-        h.splitRange(horizCuts45).flatMap { hh -> v.splitRange(vertCuts45).map { vv -> hh to vv } }
+        v.splitRange(vertCuts45)
+//            .filter { it.first == it.last }
+            .flatMap { vv -> h.splitRange(horizCuts45).map { hh -> hh to vv } }
     }
         .sortedWith(compareBy<Pair<LongRange, LongRange>> { it.first.first }.thenBy { it.first.last }
             .thenBy { it.second.first }.thenBy { it.second.last })
@@ -104,6 +106,7 @@ fun part2(input: String): Long {
             if (a.last >= b.first - 1 && al == bl) listOf(a.first..b.last to al)
             else listOf(a to al, b to bl)
         }
+
 
     val broken45 = mergedBlocks45.first { it.second.size > 1 }
         .let { (h, vl) -> h.single() to vl.first().last + 1 }
