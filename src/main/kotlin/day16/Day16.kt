@@ -27,25 +27,18 @@ class Graph(val valves: Map<String, Valve>) {
 }
 
 sealed interface Action
-data class Move(val id: String, val target: String) : Action
-data class Open(val id: String) : Action
-object Wait : Action
 
-private val printable = setOf(
-    listOf("DD") to "BB",
-    listOf("DD", "BB") to "JJ",
-    listOf("DD", "BB", "JJ") to "HH",
-    listOf("DD", "BB", "JJ", "HH") to "EE",
-    listOf("DD", "BB", "JJ", "HH", "EE") to "CC",
-    listOf("DD") to null,
-    listOf("DD", "BB") to null,
-    listOf("DD", "BB", "JJ") to null,
-    listOf("DD", "BB", "JJ", "HH") to null,
-    listOf("DD", "BB", "JJ", "HH", "EE") to null,
-    listOf("DD", "BB", "JJ", "HH", "EE", "CC") to null
-)
+data class Move(val id: String, val target: String) : Action {
+    override fun toString() = "->$id($target)"
+}
 
-private fun shouldPrint(state: State) = state.open.toList() to state.targets.first() in printable
+data class Open(val id: String) : Action {
+    override fun toString() = "^$id"
+}
+
+object Wait : Action {
+    override fun toString() = "<>"
+}
 
 data class State(
     val graph: Graph,
@@ -95,9 +88,10 @@ data class Fitness(val soFar: Long, val pressure: Long, val timeLeft: Int) {
 private fun State.possibleActions(): List<List<Action>> = buildList {
     pos.mapIndexed { index, p ->
         buildList {
-            if (p in closed && targets[index] == null && index == 0 && timeLeft > 0) add(Open(p))
+            if (index == 0 && p in closed && targets[index] == null && timeLeft > 0) add(Open(p))
             else if (timeLeft > 0) {
-                val notCurr = closed.filter { it !in pos }
+                if (index != 0 && p in closed && targets[index] == null) add(Open(p))
+                val notCurr = closed.filter { it != p }
                 val notStray = notCurr.filter { targets[index] == null || targets[index] == it }
                 val next = notStray.map { t -> (graph.shortest[p to t] ?: error("No path from $p to $t")) to t }
                 val reachable = next.filter { it.first.second <= timeLeft }
@@ -114,9 +108,9 @@ private fun State.possibleActions(): List<List<Action>> = buildList {
             2 -> ll[0].forEach { l0 ->
                 ll[1].forEach { l1 ->
                     if (pos[0] != pos[1] || (l0 is Move && l1 is Open) || (l0 is Open && l1 is Move) ||
-                        (l0 is Move && l1 is Move && l0.id <= l1.id) ||
+                        (l0 is Move && l1 is Move && l0.id <= l1.id && l0.target != l1.target) ||
                         (l0 is Open && l1 is Open && l0.id != l1.id) ||
-                        (l0 is Wait && l1 !is Wait) || (l0 !is Wait && l1 is Wait)
+                        (l0 is Wait || l1 is Wait)
                     )
                         add(listOf(l0, l1))
                 }
@@ -134,31 +128,22 @@ private fun search(graph: Graph, time: Int, pos: List<String>): Long {
 
     val queue = Stack<State>().apply { offer(start) }
 
-//    val visited = mutableMapOf(start.excerpt() to listOf(start)).apply { clear() }
-
     var result = 0L
     var rs = start
     var tested = 0L
     var mark = TimeSource.Monotonic.markNow()
     while (queue.isNotEmpty()) {
         val curr = queue.poll()
-        val excerpt = curr.excerpt()
-//        val prevFitness = visited[excerpt] ?: emptyList()
-//        if (prevFitness.any { curr.surelyWorseThan(it) })
-//            continue
-//        val newFitness = merge(prevFitness, curr)
-//        val goDeep = prevFitness.isEmpty() || prevFitness.any { curr.maybeBetterThan(it) }
-//        if (goDeep) {
-//            visited[excerpt] = newFitness
         if (result < curr.soFar) {
             result = curr.soFar
             rs = curr
         }
         tested++
+        if (curr.closed.isEmpty()) {
+            println(curr.path + " -> " + curr.soFar + " left " + curr.timeLeft)
+        }
         if (mark.elapsedNow() > 1.seconds) {
             println("tested $tested, max $result, queue size ${queue.size}")
-//                visited.toSortedMap(compareBy<Pair<String, String>> { it.first }.thenBy { it.second })
-//                    .forEach { (k, v) -> println("$k=${v.map { it.fitness() }}") }
             mark = TimeSource.Monotonic.markNow()
         }
         curr.possibleActions()
@@ -211,8 +196,8 @@ fun main() {
         Valve JJ has flow rate=21; tunnel leads to valve II
     """.trimIndent()
 
-    execute(::part1, test, 1651)
-    execute(::part1, input, 2359)
+//    execute(::part1, test, 1651)
+//    execute(::part1, input, 2359)
     execute(::part2, test, 1707)
     execute(::part2, input)
 }
