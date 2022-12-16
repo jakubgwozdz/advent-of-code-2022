@@ -1,6 +1,7 @@
 package day16
 
 import Stack
+import bfs
 import execute
 import parseRecords
 import readAllText
@@ -8,39 +9,79 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
 data class Valve(val rate: Long, val exits: List<String>)
-data class Graph(val valves: Map<String, Valve>) {
+class Graph(val valves: Map<String, Valve>) {
     operator fun get(pos: String): Valve = valves[pos]!!
+    val shortest = valves.keys.flatMap { s -> valves.keys.map { e -> s to e } }
+        .filter { (s, e) -> s != e }
+        .associateWith { (s, e) ->
+            bfs(
+                graphOp = { p -> this[p].exits },
+                start = s,
+                initial = listOf<String>(),
+                moveOp = { l, p -> l + p },
+                endOp = { it == e }
+            )!!.run { first() to size }
+        }
+//        .onEach { println(it) }
+//        .also { TODO() }
 }
 
 sealed interface Action
-data class Move(val id: String) : Action
+data class Move(val id: String, val target: String) : Action
 data class Open(val id: String) : Action
 object Wait : Action
 
+private val printable = setOf(
+    listOf("DD") to "BB",
+    listOf("DD", "BB") to "JJ",
+    listOf("DD", "BB", "JJ") to "HH",
+    listOf("DD", "BB", "JJ", "HH") to "EE",
+    listOf("DD", "BB", "JJ", "HH", "EE") to "CC",
+    listOf("DD") to null,
+    listOf("DD", "BB") to null,
+    listOf("DD", "BB", "JJ") to null,
+    listOf("DD", "BB", "JJ", "HH") to null,
+    listOf("DD", "BB", "JJ", "HH", "EE") to null,
+    listOf("DD", "BB", "JJ", "HH", "EE", "CC") to null
+)
+
+private fun shouldPrint(state: State) = state.open.toList() to state.targets.first() in printable
+
 data class State(
-    val pos: List<String>,
-    val open: Set<String>,
-    val pressure: Long,
-    val soFar: Long,
-    val timeLeft: Int,
     val graph: Graph,
+    val timeLeft: Int,
+    val pos: List<String>,
+    val targets: List<String?> = pos.map { null },
+    val open: Set<String> = emptySet(),
+    val pressure: Long = 0,
+    val soFar: Long = 0,
+    val path: List<List<Action>> = emptyList(),
 ) {
     operator fun plus(actions: List<Action>): State {
         val newPos = pos.zip(actions).map { (p, a) -> if (a is Move) a.id else p }
+        val newTargets = newPos.zip(actions).map { (p, a) -> if (a is Move && a.target != p) a.target else null }
         val newOpen = actions.filterIsInstance<Open>().map(Open::id)
         return copy(
             pos = newPos,
             open = open + newOpen,
+            targets = newTargets,
             pressure = pressure + newOpen.sumOf { graph[it].rate },
             soFar = soFar + pressure,
-            timeLeft = timeLeft - 1
+            timeLeft = timeLeft - 1,
+            path = buildList { addAll(path); add(actions) }
         )
+//            .also {
+//                if (shouldPrint(it)) {
+//                    println("$this + $actions -> $it")
+//                }
+//            }
     }
 
+    val closed by lazy { graph.valves.filterValues { it.rate > 0 }.keys - open }
     fun excerpt() = pos.sorted().toString() to open.sorted().toString()
     fun fitness() = Fitness(soFar, pressure, timeLeft)
 
-    override fun toString() = "@$pos, open $open, pressure $pressure, so far $soFar, time left $timeLeft"
+    override fun toString() = "@$pos->$targets, open $open, pressure $pressure, so far $soFar, time left $timeLeft"
     fun surelyWorseThan(next: State) = fitness().surelyWorseThan(next.fitness())
     fun maybeBetterThan(prev: State) = fitness().maybeBetterThan(prev.fitness())
 }
@@ -51,103 +92,87 @@ data class Fitness(val soFar: Long, val pressure: Long, val timeLeft: Int) {
     override fun toString() = "($soFar,$timeLeft)"
 }
 
-
-var testing = false
 private fun State.possibleActions(): List<List<Action>> = buildList {
-//        if (timeLeft > 0) add(
-//            when (31 - timeLeft) {
-//            1 -> Move("DD")
-//            2 -> Open("DD")
-//            3 -> Move("CC")
-//            4 -> Move("BB")
-//            5 -> Open("BB")
-//            6 -> Move("AA")
-//            7 -> Move("II")
-//            8 -> Move("JJ")
-//            9 -> Open("JJ")
-//            10 -> Move("II")
-//            11 -> Move("AA")
-//            12 -> Move("DD")
-//            13 -> Move("EE")
-//            14 -> Move("FF")
-//            15 -> Move("GG")
-//            16 -> Move("HH")
-//            17 -> Open("HH")
-//            18 -> Move("GG")
-//            19 -> Move("FF")
-//            20 -> Move("EE")
-//            21 -> Open("EE")
-//            22 -> Move("DD")
-//            23 -> Move("CC")
-//            24 -> Open("CC")
-//            else -> Wait
-//    } else
-    if (timeLeft > 0) {
-        pos.map { p ->
-            val (rate, exits) = graph[p]
-            buildList {
-                exits.forEach { exit -> add(Move(exit)) }
-                if (rate > 0 && p !in open) add(Open(p))
-            }
-        }.let { ll ->
-            when (ll.size) {
-                1 -> ll[0].forEach { l0 -> add(listOf(l0)) }
-                2 -> ll[0].forEach { l0 ->
-                    ll[1].forEach { l1 ->
-                        if (pos[0] != pos[1] || (l0 is Move && l1 is Open) || (l0 is Open && l1 is Move) ||
-                            (l0 is Move && l1 is Move && l0.id <= l1.id) ||
-                            (l0 is Open && l1 is Open && l0.id != l1.id)
-                        )
-                            add(listOf(l0, l1))
-                    }
+    pos.mapIndexed { index, p ->
+        buildList {
+            if (p in closed && targets[index] == null && index == 0 && timeLeft > 0) add(Open(p))
+            else if (timeLeft > 0) {
+                val notCurr = closed.filter { it !in pos }
+                val notStray = notCurr.filter { targets[index] == null || targets[index] == it }
+                val next = notStray.map { t -> (graph.shortest[p to t] ?: error("No path from $p to $t")) to t }
+                val reachable = next.filter { it.first.second <= timeLeft }
+                val unique = reachable.map { it.first.first to it.second }.toSet()
+                unique.forEach { add(Move(it.first, it.second)) }
+                if (isEmpty()) {
+                    add(Wait)
                 }
-
-                else -> TODO()
             }
+        }
+    }.let { ll ->
+        when (ll.size) {
+            1 -> ll[0].forEach { l0 -> add(listOf(l0)) }
+            2 -> ll[0].forEach { l0 ->
+                ll[1].forEach { l1 ->
+                    if (pos[0] != pos[1] || (l0 is Move && l1 is Open) || (l0 is Open && l1 is Move) ||
+                        (l0 is Move && l1 is Move && l0.id <= l1.id) ||
+                        (l0 is Open && l1 is Open && l0.id != l1.id) ||
+                        (l0 is Wait && l1 !is Wait) || (l0 !is Wait && l1 is Wait)
+                    )
+                        add(listOf(l0, l1))
+                }
+            }
+
+            else -> TODO()
         }
     }
 }
 
 private fun search(graph: Graph, time: Int, pos: List<String>): Long {
-    val start = State(pos, emptySet(), 0, 0, time, graph)
+    val start = State(graph, time, pos)
 
     val comparator = compareByDescending<State> { it.soFar }
 
     val queue = Stack<State>().apply { offer(start) }
 
-    val visited = mutableMapOf(start.excerpt() to listOf(start)).apply { clear() }
+//    val visited = mutableMapOf(start.excerpt() to listOf(start)).apply { clear() }
 
     var result = 0L
+    var rs = start
     var tested = 0L
     var mark = TimeSource.Monotonic.markNow()
     while (queue.isNotEmpty()) {
         val curr = queue.poll()
         val excerpt = curr.excerpt()
-        val prevFitness = visited[excerpt] ?: emptyList()
-        if (prevFitness.any { curr.surelyWorseThan(it) })
-            continue
-        val newFitness = merge(prevFitness, curr)
-        result = result.coerceAtLeast(curr.soFar)
-        val goDeep = prevFitness.isEmpty() || prevFitness.any { curr.maybeBetterThan(it) }
-        if (goDeep) {
-            visited[excerpt] = newFitness
-            result = result.coerceAtLeast(curr.soFar)
-            tested++
-            if (mark.elapsedNow() > 1.seconds) {
-                println("tested $tested, max $result, queue size ${queue.size}, curr $curr")
-                mark = TimeSource.Monotonic.markNow()
-            }
-            curr.possibleActions()
-                .map { curr + it }
-                .filter { state ->
-                    state.excerpt() !in visited || visited[state.excerpt()]!!.any {
-                        state.maybeBetterThan(it)
-                    }
-                }
-                .forEach { queue.offer(it) }
+//        val prevFitness = visited[excerpt] ?: emptyList()
+//        if (prevFitness.any { curr.surelyWorseThan(it) })
+//            continue
+//        val newFitness = merge(prevFitness, curr)
+//        val goDeep = prevFitness.isEmpty() || prevFitness.any { curr.maybeBetterThan(it) }
+//        if (goDeep) {
+//            visited[excerpt] = newFitness
+        if (result < curr.soFar) {
+            result = curr.soFar
+            rs = curr
         }
+        tested++
+        if (mark.elapsedNow() > 1.seconds) {
+            println("tested $tested, max $result, queue size ${queue.size}")
+//                visited.toSortedMap(compareBy<Pair<String, String>> { it.first }.thenBy { it.second })
+//                    .forEach { (k, v) -> println("$k=${v.map { it.fitness() }}") }
+            mark = TimeSource.Monotonic.markNow()
+        }
+        curr.possibleActions()
+            .map { curr + it }
+//                .filter { state ->
+//                    state.excerpt() !in visited || visited[state.excerpt()]!!.any {
+//                        state.maybeBetterThan(it)
+//                    }
+//                }
+            .forEach { queue.offer(it) }
     }
+//    }
 
+    println(rs)
     return result
 }
 
@@ -187,7 +212,7 @@ fun main() {
     """.trimIndent()
 
     execute(::part1, test, 1651)
-//    execute(::part1, input, 2359)
+    execute(::part1, input, 2359)
     execute(::part2, test, 1707)
     execute(::part2, input)
 }
