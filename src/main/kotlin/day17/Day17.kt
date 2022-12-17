@@ -52,14 +52,10 @@ class Chamber {
     private val data = IntArray(80) { if (it == 0) FULL else WALLS }
 
     //    var offset = 0L
-    fun isLineEmpty(i: Long) = (this[i] and FULL == WALLS)
-        .also {
-            if (it) {
-                (1..8).forEach { dy ->
-                    this[i + dy] = WALLS
-                }
-            }
-        }
+    fun isLineEmpty(i: Long) = this[i] and FULL == WALLS
+
+    fun cleanUpAbove(i: Long) = (1..8).forEach { dy -> this[i + dy] = WALLS }
+
 
     private operator fun set(i: Long, value: Int) {
         data[(i % data.size).toInt()] = value
@@ -92,7 +88,7 @@ private fun CharArray.toInt() = fold(0) { acc, c ->
 
 private fun solve(input: String, times: Long) = input.trim().let { winds ->
     var windIndex = 0
-    val period = winds.length * shapes.count() * 5 * 5 * 7 * 2 // found magically
+    val period = winds.length * shapes.count() * 5 * 5 * 7 * 2 // found manually
     val chamber = Chamber()
     var done = 0L
 
@@ -128,6 +124,7 @@ private fun solve(input: String, times: Long) = input.trim().let { winds ->
 
         chamber.rest(shape, x, y)
         height = (0..5).map { it + height }.first { chamber.isLineEmpty(it + 1) }
+        chamber.cleanUpAbove(height)
 
         done++
     }
