@@ -2,6 +2,7 @@ package day17
 
 import execute
 import readAllText
+import wtf
 
 val shapes = listOf(
     """
@@ -41,17 +42,29 @@ fun part2(input: String) = solve(input, 1000000000000L)
 
 private fun solve(input: String, times: Long) = input.trim().let { winds ->
     var windIndex = 0
-    val chamber = ((0..10000).map { "|.......|" } + "+#######+").map { it.toCharArray() }.toTypedArray()
-    var height = 0L
-    val rep = winds.length * 4L * 4
-    var testPrv = 0L
+    val rep = (winds.length.toLong() * 3 * 5 * 7).coerceAtMost(times)
+    println("rep $rep")
+    val chamber = ((0..30000000).map { "|.......|" } + "+#######+").map { it.toCharArray() }.toTypedArray()
     var done = 0L
 
+    var p1 = 0L
+    var offset = 0L
+    var repetitions = 0L
+    var prev = 0L
+
+    var height = 0L
     while (done < times) {
         val shape = shapes[(done % shapes.size).toInt()]
         if (done % rep == 0L) {
-            println("step $done: $height, diff ${height - testPrv}")
-            testPrv = height
+            offset = height - prev
+            println("step $done, height $height, offset $offset")
+            prev = height
+            if (height + offset * 2 >= chamber.size) {
+                repetitions = (times / rep) - (done / rep)
+                val newDone = done + repetitions * rep
+                println("repetitions $repetitions, skip to $newDone")
+                done = newDone
+            }
         }
         var x = 3
         var y = height.toInt() + 4
@@ -59,8 +72,11 @@ private fun solve(input: String, times: Long) = input.trim().let { winds ->
         while (falling) {
             val dir = winds[windIndex % winds.length]
             windIndex++
-            if (dir == '>' && canGo(chamber, shape, x + 1, y)) x += 1
-            if (dir == '<' && canGo(chamber, shape, x - 1, y)) x -= 1
+            if (dir == '>') {
+                if (canGo(chamber, shape, x + 1, y)) x += 1
+            } else if (dir == '<') {
+                if (canGo(chamber, shape, x - 1, y)) x -= 1
+            } else wtf("$dir")
             if (canGo(chamber, shape, x, y - 1)) y -= 1 else falling = false
         }
 
@@ -69,7 +85,8 @@ private fun solve(input: String, times: Long) = input.trim().let { winds ->
 
         done++
     }
-    height
+    println("$height + $repetitions * $offset")
+    height + repetitions * offset
 }
 
 fun rest(chamber: Array<CharArray>, shape: Array<CharArray>, x: Int, y: Int) {
@@ -78,7 +95,6 @@ fun rest(chamber: Array<CharArray>, shape: Array<CharArray>, x: Int, y: Int) {
         line.forEachIndexed { shapeX, c ->
             if (c == '#') chamber[chamberY + shapeY][shapeX + x] = '#'
         }
-
     }
 }
 
