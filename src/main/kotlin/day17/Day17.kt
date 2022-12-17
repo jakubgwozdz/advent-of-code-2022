@@ -40,11 +40,49 @@ val shapes = listOf(
 fun part1(input: String) = solve(input, 2022L)
 fun part2(input: String) = solve(input, 1000000000000L)
 
+class Chamber() {
+    val data = Array(1000) { (if (it == 0) "+#######+" else "|.......|").toCharArray() }
+
+    //    var offset = 0L
+    fun isLineEmpty(i: Long) = this[i].none { it == '#' }
+        .also {
+            if (it) {
+                (1..10).forEach { dy ->
+                    (1..7).forEach { dx ->
+                        this[i + dy][dx] = '.'
+                    }
+                }
+            }
+        }
+
+    operator fun get(i: Long) = data[(i % 1000).toInt()]
+
+    fun rest(shape: Array<CharArray>, x: Int, y: Long) {
+        val chamberY = y + 3
+        shape.forEachIndexed { shapeY, line ->
+            line.forEachIndexed { shapeX, c ->
+                if (c == '#') this[chamberY - shapeY][shapeX + x] = '#'
+            }
+        }
+    }
+
+    fun canGo(shape: Array<CharArray>, x: Int, y: Long): Boolean {
+        val chamberY = y + 3
+        return (0..3).all { dy ->
+            (0..3).all { dx ->
+                shape[dy][dx] == '.' || this[chamberY - dy][x + dx] == '.'
+            }
+        }
+    }
+
+
+}
+
 private fun solve(input: String, times: Long) = input.trim().let { winds ->
     var windIndex = 0
-    val rep = (winds.length.toLong() * 3 * 5 * 7).coerceAtMost(times)
-    println("rep $rep")
-    val chamber = ((0..30000000).map { "|.......|" } + "+#######+").map { it.toCharArray() }.toTypedArray()
+    val period = winds.length.toLong() * 5 * 350
+    println("period $period")
+    val chamber = Chamber()
     var done = 0L
 
     var p1 = 0L
@@ -55,56 +93,38 @@ private fun solve(input: String, times: Long) = input.trim().let { winds ->
     var height = 0L
     while (done < times) {
         val shape = shapes[(done % shapes.size).toInt()]
-        if (done % rep == 0L) {
+        if (done % period == 0L) {
             offset = height - prev
-            println("step $done, height $height, offset $offset")
+            println(offset)
             prev = height
-            if (height + offset * 2 >= chamber.size) {
-                repetitions = (times / rep) - (done / rep)
-                val newDone = done + repetitions * rep
+            if (done / period == 2L) {
+                repetitions = (times / period) - (done / period)
+                val newDone = done + repetitions * period
                 println("repetitions $repetitions, skip to $newDone")
                 done = newDone
             }
         }
         var x = 3
-        var y = height.toInt() + 4
+        var y = height + 4
         var falling = true
         while (falling) {
             val dir = winds[windIndex % winds.length]
             windIndex++
             if (dir == '>') {
-                if (canGo(chamber, shape, x + 1, y)) x += 1
+                if (chamber.canGo(shape, x + 1, y)) x += 1
             } else if (dir == '<') {
-                if (canGo(chamber, shape, x - 1, y)) x -= 1
+                if (chamber.canGo(shape, x - 1, y)) x -= 1
             } else wtf("$dir")
-            if (canGo(chamber, shape, x, y - 1)) y -= 1 else falling = false
+            if (chamber.canGo(shape, x, y - 1)) y -= 1 else falling = false
         }
 
-        rest(chamber, shape, x, y)
-        height = (0..5).map { it + height }.first { chamber[chamber.size - it.toInt() - 2].none { it == '#' } }
+        chamber.rest(shape, x, y)
+        height = (0..5).map { it + height }.first { chamber.isLineEmpty(it + 1) }
 
         done++
     }
     println("$height + $repetitions * $offset")
     height + repetitions * offset
-}
-
-fun rest(chamber: Array<CharArray>, shape: Array<CharArray>, x: Int, y: Int) {
-    val chamberY = chamber.size - y - 4
-    shape.forEachIndexed { shapeY, line ->
-        line.forEachIndexed { shapeX, c ->
-            if (c == '#') chamber[chamberY + shapeY][shapeX + x] = '#'
-        }
-    }
-}
-
-fun canGo(chamber: Array<CharArray>, shape: Array<CharArray>, x: Int, y: Int): Boolean {
-    val chamberY = chamber.size - y - 4
-    return (0..3).all { dy ->
-        (0..3).all { dx ->
-            shape[dy][dx] == '.' || chamber[chamberY + dy][x + dx] == '.'
-        }
-    }
 }
 
 fun main() {
