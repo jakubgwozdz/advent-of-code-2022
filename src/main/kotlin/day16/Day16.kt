@@ -139,9 +139,9 @@ private fun search(graph: Graph, time: Int, pos: List<String>): Long {
             rs = curr
         }
         tested++
-        if (curr.closed.isEmpty()) {
-            println(curr.path + " -> " + curr.soFar + " left " + curr.timeLeft)
-        }
+//        if (curr.closed.isEmpty()) {
+//            println(curr.path + " -> " + curr.soFar + " left " + curr.timeLeft)
+//        }
         if (mark.elapsedNow() > 1.seconds) {
             println("tested $tested, max $result, queue size ${queue.size}")
             mark = TimeSource.Monotonic.markNow()
