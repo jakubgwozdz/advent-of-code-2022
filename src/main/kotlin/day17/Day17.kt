@@ -41,41 +41,46 @@ fun part1(input: String) = solve(input, 2022L)
 fun part2(input: String) = solve(input, 1000000000000L)
 
 class Shape(input: String) {
-    private val data = input.lines().also { check(it.size == 4) }.map { it.toCharArray() }.toTypedArray()
+    private val data = IntArray(4) { input.lines()[it].toCharArray().toInt() }
     operator fun get(shapeY: Int) = data[shapeY]
 }
 
+private const val FULL = 511
+private const val WALLS = 257
+
 class Chamber {
-    private val data = Array(1000) { (if (it == 0) "+#######+" else "|.......|").toCharArray() }
+    private val data = IntArray(80) { if (it == 0) FULL else WALLS }
 
     //    var offset = 0L
-    fun isLineEmpty(i: Long) = this[i].none { it == '#' }
+    fun isLineEmpty(i: Long) = (this[i] and FULL == WALLS)
         .also {
             if (it) {
-                (1..10).forEach { dy ->
-                    (1..7).forEach { dx ->
-                        this[i + dy][dx] = '.'
-                    }
+                (1..8).forEach { dy ->
+                    this[i + dy] = WALLS
                 }
             }
         }
 
-    operator fun get(i: Long) = data[(i % 1000).toInt()]
+    private operator fun set(i: Long, value: Int) {
+        data[(i % data.size).toInt()] = value
+    }
+
+    operator fun get(i: Long) = data[(i % data.size).toInt()]
 
     fun rest(shape: Shape, x: Int, y: Long) {
         val chamberY = y + 3
         (0..3).forEach { dY ->
-            val sl = shape[dY]
+            val sl = (shape[dY] shl 5) shr x
             val cl = this[chamberY - dY]
-            (0..3).forEach { dx -> if (sl[dx] == '#') cl[dx + x] = '#' }
+            this[chamberY - dY] = cl or sl
         }
     }
 
     fun canGo(shape: Shape, x: Int, y: Long): Boolean {
         val chamberY = y + 3
         return (0..3).all { dY ->
-            val sl = (shape[dY].toInt() shl 5) shr x
-            val cl = this[chamberY - dY].toInt()
+            val sl = (shape[dY] shl 5) shr x
+            val cl = this[chamberY - dY]
             sl and cl == 0
         }
     }
@@ -87,7 +92,7 @@ private fun CharArray.toInt() = fold(0) { acc, c ->
 
 private fun solve(input: String, times: Long) = input.trim().let { winds ->
     var windIndex = 0
-    val period = winds.length * shapes.count() * 5 * 5 * 7 * 2
+    val period = winds.length * shapes.count() * 5 * 5 * 7 * 2 // found magically
     val chamber = Chamber()
     var done = 0L
 
