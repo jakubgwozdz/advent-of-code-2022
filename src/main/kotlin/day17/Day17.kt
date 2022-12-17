@@ -92,7 +92,7 @@ private fun solve(input: String, times: Long) = input.trim().let { winds ->
     val chamber = Chamber()
     var done = 0L
 
-    var offset = 0L
+    var delta = 0L
     var repetitions = 0L
     var prev = 0L
 
@@ -100,7 +100,7 @@ private fun solve(input: String, times: Long) = input.trim().let { winds ->
     while (done < times) {
         val shape = shapes[(done % shapes.size).toInt()]
         if (done % period == 1000L) {
-            offset = height - prev
+            delta = height - prev
             prev = height
             if (done / period == 1L) {
                 repetitions = (times / period) - (done / period)
@@ -128,7 +128,7 @@ private fun solve(input: String, times: Long) = input.trim().let { winds ->
 
         done++
     }
-    height + repetitions * offset
+    height + repetitions * delta
 }
 
 fun main() {
