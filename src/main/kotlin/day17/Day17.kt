@@ -74,14 +74,12 @@ class Chamber() {
             }
         }
     }
-
-
 }
 
 private fun solve(input: String, times: Long) = input.trim().let { winds ->
     var windIndex = 0
     val period = winds.length.toLong() * 5 * 350
-    println("period $period")
+//    println("period $period")
     val chamber = Chamber()
     var done = 0L
 
@@ -93,14 +91,14 @@ private fun solve(input: String, times: Long) = input.trim().let { winds ->
     var height = 0L
     while (done < times) {
         val shape = shapes[(done % shapes.size).toInt()]
-        if (done % period == 0L) {
+        if (done % period == 1000L) {
             offset = height - prev
-            println(offset)
+//            println(offset)
             prev = height
-            if (done / period == 2L) {
+            if (done / period == 1L) {
                 repetitions = (times / period) - (done / period)
                 val newDone = done + repetitions * period
-                println("repetitions $repetitions, skip to $newDone")
+//                println("repetitions $repetitions, skip to $newDone")
                 done = newDone
             }
         }
@@ -123,7 +121,7 @@ private fun solve(input: String, times: Long) = input.trim().let { winds ->
 
         done++
     }
-    println("$height + $repetitions * $offset")
+//    println("$height + $repetitions * $offset")
     height + repetitions * offset
 }
 
@@ -133,5 +131,5 @@ fun main() {
     execute(::part1, test, 3068)
     execute(::part1, input, 3227)
     execute(::part2, test, 1514285714288)
-    execute(::part2, input)
+    execute(::part2, input, 1597714285698)
 }
