@@ -1,6 +1,6 @@
 package day16
 
-import Stack
+import PriorityQueue
 import bfs
 import execute
 import parseRecords
@@ -54,12 +54,14 @@ data class State(
     val open: Set<String> = emptySet(),
     val pressure: Long = 0,
     val soFar: Long = 0,
+    val score: Long = 0,
     val path: List<List<Action>> = emptyList(),
 ) {
     operator fun plus(actions: List<Action>): State {
         val newPos = pos.zip(actions).map { (p, a) -> if (a is Move) a.id else p }
         val newDist = distances.zip(actions).map { (d, a) -> if (a is Move) a.dist - 1 else if (d > 0) d - 1 else 0 }
         val newOpen = actions.filterIsInstance<Open>().map(Open::id)
+        val newScore = score + newOpen.sumOf { graph[it].rate * (timeLeft - 1) }
         return copy(
             pos = newPos,
             open = open + newOpen,
@@ -67,6 +69,7 @@ data class State(
             pressure = pressure + newOpen.sumOf { graph[it].rate },
             soFar = soFar + pressure,
             timeLeft = timeLeft - 1,
+            score = newScore,
             path = buildList { addAll(path); add(actions) }
         )
     }
@@ -76,10 +79,8 @@ data class State(
     fun fitness() = Fitness(soFar, pressure, timeLeft)
 
     override fun toString() =
-        "@$pos($distances), open $open, pressure $pressure, so far $soFar, time left $timeLeft, path $path"
+        "@$pos($distances), score $score, closed $closed, pressure $pressure, so far $soFar, time left $timeLeft, path $path"
 
-    fun surelyWorseThan(next: State) = fitness().surelyWorseThan(next.fitness())
-    fun maybeBetterThan(prev: State) = fitness().maybeBetterThan(prev.fitness())
 }
 
 data class Fitness(val soFar: Long, val pressure: Long, val timeLeft: Int) {
@@ -128,9 +129,9 @@ private fun State.possibleActions(): List<List<Action>> = buildList {
 private fun search(graph: Graph, time: Int, pos: List<String>): Long {
     val start = State(graph, time, pos)
 
-    val comparator = compareByDescending<State> { it.soFar }
+    val comparator = compareByDescending<State> { it.score }
 
-    val queue = Stack<State>().apply { offer(start) }
+    val queue = PriorityQueue<State>(comparator).apply { offer(start) }
 
     var result = 0L
     var rs = start
@@ -138,14 +139,14 @@ private fun search(graph: Graph, time: Int, pos: List<String>): Long {
     var mark = TimeSource.Monotonic.markNow()
     while (queue.isNotEmpty()) {
         val curr = queue.poll()
-//            .also {
+            .also {
 //                if (pos.size > 1) {
 //                    if (50 > pppp++) println(it) else TODO()
 //                }
-//            }
+            }
 
-        if (result < curr.soFar) {
-            result = curr.soFar
+        if (result < curr.score) {
+            result = curr.score
             rs = curr
         }
         tested++
@@ -170,13 +171,6 @@ private fun search(graph: Graph, time: Int, pos: List<String>): Long {
     println(rs)
     return result
 }
-
-private fun merge(
-    prevStates: List<State>?,
-    curr: State
-) = (((prevStates ?: setOf())).filter { !it.surelyWorseThan(curr) } + curr)
-    .also {
-    }
 
 fun part1(input: String) = input.parseRecords(regex, ::parse)
     .toMap()
@@ -209,6 +203,6 @@ fun main() {
     execute(::part1, test, 1651)
     execute(::part1, input, 2359)
 //    TODO()
-//    execute(::part2, test, 1707)
+    execute(::part2, test, 1707)
     execute(::part2, input)
 }
