@@ -11,7 +11,9 @@ import kotlin.time.TimeSource
 data class Valve(val rate: Long, val exits: List<String>)
 class Graph(val valves: Map<String, Valve>) {
     operator fun get(pos: String): Valve = valves[pos]!!
-    val shortest = valves.keys.flatMap { s -> valves.keys.map { e -> s to e } }
+    val shortest = valves
+        .filter { (k, v) -> v.rate > 0 || k == "AA" }
+        .keys.flatMap { s -> valves.filterValues { it.rate > 0 }.keys.map { e -> s to e } }
         .filter { (s, e) -> s != e }
         .associateWith { (s, e) ->
             bfs(
@@ -20,16 +22,18 @@ class Graph(val valves: Map<String, Valve>) {
                 initial = listOf<String>(),
                 moveOp = { l, p -> l + p },
                 endOp = { it == e }
-            )!!.run { first() to size }
+            )!!.size
         }
-//        .onEach { println(it) }
-//        .also { TODO() }
+//        .also {
+//            it.forEach(::println)
+////            TODO()
+//        }
 }
 
 sealed interface Action
 
-data class Move(val id: String, val target: String) : Action {
-    override fun toString() = "->$id($target)"
+data class Move(val id: String, val dist: Int) : Action {
+    override fun toString() = "->$id($dist)"
 }
 
 data class Open(val id: String) : Action {
@@ -40,11 +44,13 @@ object Wait : Action {
     override fun toString() = "<>"
 }
 
+var pppp = 0L
+
 data class State(
     val graph: Graph,
     val timeLeft: Int,
     val pos: List<String>,
-    val targets: List<String?> = pos.map { null },
+    val distances: List<Int> = pos.map { 0 },
     val open: Set<String> = emptySet(),
     val pressure: Long = 0,
     val soFar: Long = 0,
@@ -52,29 +58,26 @@ data class State(
 ) {
     operator fun plus(actions: List<Action>): State {
         val newPos = pos.zip(actions).map { (p, a) -> if (a is Move) a.id else p }
-        val newTargets = newPos.zip(actions).map { (p, a) -> if (a is Move && a.target != p) a.target else null }
+        val newDist = distances.zip(actions).map { (d, a) -> if (a is Move) a.dist - 1 else if (d > 0) d - 1 else 0 }
         val newOpen = actions.filterIsInstance<Open>().map(Open::id)
         return copy(
             pos = newPos,
             open = open + newOpen,
-            targets = newTargets,
+            distances = newDist,
             pressure = pressure + newOpen.sumOf { graph[it].rate },
             soFar = soFar + pressure,
             timeLeft = timeLeft - 1,
             path = buildList { addAll(path); add(actions) }
         )
-//            .also {
-//                if (shouldPrint(it)) {
-//                    println("$this + $actions -> $it")
-//                }
-//            }
     }
 
     val closed by lazy { graph.valves.filterValues { it.rate > 0 }.keys - open }
     fun excerpt() = pos.sorted().toString() to open.sorted().toString()
     fun fitness() = Fitness(soFar, pressure, timeLeft)
 
-    override fun toString() = "@$pos->$targets, open $open, pressure $pressure, so far $soFar, time left $timeLeft"
+    override fun toString() =
+        "@$pos($distances), open $open, pressure $pressure, so far $soFar, time left $timeLeft, path $path"
+
     fun surelyWorseThan(next: State) = fitness().surelyWorseThan(next.fitness())
     fun maybeBetterThan(prev: State) = fitness().maybeBetterThan(prev.fitness())
 }
@@ -88,17 +91,18 @@ data class Fitness(val soFar: Long, val pressure: Long, val timeLeft: Int) {
 private fun State.possibleActions(): List<List<Action>> = buildList {
     pos.mapIndexed { index, p ->
         buildList {
-            if (index == 0 && p in closed && targets[index] == null && timeLeft > 0) add(Open(p))
-            else if (timeLeft > 0) {
-                if (index != 0 && p in closed && targets[index] == null) add(Open(p))
-                val notCurr = closed.filter { it != p }
-                val notStray = notCurr.filter { targets[index] == null || targets[index] == it }
-                val next = notStray.map { t -> (graph.shortest[p to t] ?: error("No path from $p to $t")) to t }
-                val reachable = next.filter { it.first.second <= timeLeft }
-                val unique = reachable.map { it.first.first to it.second }.toSet()
-                unique.forEach { add(Move(it.first, it.second)) }
-                if (isEmpty()) {
-                    add(Wait)
+            if (timeLeft > 0) {
+                if (distances[index] > 0) add(Wait)
+                else if (index == 0 && p in closed) add(Open(p))
+                else {
+                    if (index != 0 && p in closed) add(Open(p))
+                    val notCurr = closed.filter { it != p && it !in pos }
+                    val next = notCurr.associateWith { t -> graph.shortest[p to t] ?: error("No path from $p to $t") }
+                    val reachable = next.filterValues { it <= timeLeft }
+                    reachable.forEach { (v, d) -> add(Move(v, d)) }
+                    if (isEmpty()) {
+                        add(Wait)
+                    }
                 }
             }
         }
@@ -107,8 +111,8 @@ private fun State.possibleActions(): List<List<Action>> = buildList {
             1 -> ll[0].forEach { l0 -> add(listOf(l0)) }
             2 -> ll[0].forEach { l0 ->
                 ll[1].forEach { l1 ->
-                    if (pos[0] != pos[1] || (l0 is Move && l1 is Open) || (l0 is Open && l1 is Move) ||
-                        (l0 is Move && l1 is Move && l0.id <= l1.id && l0.target != l1.target) ||
+                    if ((l0 is Move && l1 is Open) || (l0 is Open && l1 is Move) ||
+                        (l0 is Move && l1 is Move && l0.id != l1.id) ||
                         (l0 is Open && l1 is Open && l0.id != l1.id) ||
                         (l0 is Wait || l1 is Wait)
                     )
@@ -134,6 +138,12 @@ private fun search(graph: Graph, time: Int, pos: List<String>): Long {
     var mark = TimeSource.Monotonic.markNow()
     while (queue.isNotEmpty()) {
         val curr = queue.poll()
+//            .also {
+//                if (pos.size > 1) {
+//                    if (50 > pppp++) println(it) else TODO()
+//                }
+//            }
+
         if (result < curr.soFar) {
             result = curr.soFar
             rs = curr
@@ -198,7 +208,7 @@ fun main() {
 
     execute(::part1, test, 1651)
     execute(::part1, input, 2359)
-    TODO()
-    execute(::part2, test, 1707)
+//    TODO()
+//    execute(::part2, test, 1707)
     execute(::part2, input)
 }
