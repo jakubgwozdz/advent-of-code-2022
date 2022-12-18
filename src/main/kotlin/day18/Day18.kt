@@ -29,21 +29,24 @@ fun part1(input: String) = parse(input)
 
 fun part2(input: String) = parse(input)
     .let { cubes ->
-        val outsides = cubes.flatMap { t ->
-            adj.map { t + it }.filter { it !in cubes }
-        }
+        val outsides = cubes.flatMap { t -> adj.map { t + it }.filter { it !in cubes } }
         val gruppedOutsides = buildMap {
             outsides
                 .forEach { c ->
                     addCube(c)
-                    adj.map { it + c }.filter { it !in cubes }.forEach { addCube(it) }
+                    adj.map { it + c }
+                        .filter { it !in cubes }
+                        .filter { it !in this }
+                        .forEach { addCube(it) }
                 }
         }
             .onEach { (k, v) -> v.retainAll(outsides.toSet()) }
         val outside = gruppedOutsides.maxBy { (k, v) -> v.size }.value
         outsides.count { it in outside }
-
     }
+
+private operator fun Map<Int, Set<Cube>>.contains(it: Cube) =
+    any { e -> it in e.value }
 
 private var id = 0
 
