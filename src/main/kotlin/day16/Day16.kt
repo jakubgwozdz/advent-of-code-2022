@@ -31,18 +31,20 @@ class Graph(val valves: Map<String, Valve>) {
 //        }
 }
 
-sealed interface Action
+sealed interface Action {
+    val id: String
+    val dist: Int
+}
 
-data class Move(val id: String, val dist: Int) : Action {
+data class Move(override val id: String, override val dist: Int) : Action {
     override fun toString() = "->$id($dist)"
 }
 
-data class Open(val id: String) : Action {
-    override fun toString() = "^$id"
-}
+data class Open(override val id: String) : Action {
+    override val dist: Int
+        get() = 0
 
-object Wait : Action {
-    override fun toString() = "<>"
+    override fun toString() = "^$id"
 }
 
 var pppp = 0L
@@ -51,16 +53,17 @@ data class State(
     val graph: Graph,
     val timeLeft: Int,
     val pos: List<String>,
-    val distances: List<Int> = pos.map { 0 },
+    val distances: List<Int> = pos.map { -1 },
     val open: Set<String> = emptySet(),
     val score: Long = 0,
     val path: List<List<Action>> = emptyList(),
 ) {
     operator fun plus(actions: List<Action>): State {
-        val newPos = pos.zip(actions).map { (p, a) -> if (a is Move) a.id else p }
-        val newDist = distances.zip(actions).map { (d, a) -> if (a is Move) a.dist - 1 else if (d > 0) d - 1 else 0 }
+//        val newOpen = actions.filterIsInstance<Move>().filter { it.dist == 0 }.map(Move::id)
+        val newPos = actions.map { it.id }
+        val newDist = actions.map { it.dist - 1 }
         val newOpen = actions.filterIsInstance<Open>().map(Open::id)
-        var timeElapsed = 1;
+        var timeElapsed = 1
         val newScore = score + newOpen.sumOf { graph[it].rate * (timeLeft - timeElapsed) }
         return copy(
             pos = newPos,
@@ -82,8 +85,8 @@ data class State(
 private fun State.possibleActions(): List<List<Action>> = buildList {
     if (timeLeft > 0) {
         pos.mapIndexed { index, p ->
-            buildList {
-                if (distances[index] > 0) add(Wait)
+            buildList<Action> {
+                if (distances[index] > 0) add(Move(p, distances[index]))
                 else if (p in closed) add(graph.opens[p]!!)
                 else {
                     val notCurr = closed.filter { it != p && it !in pos }
@@ -100,14 +103,15 @@ private fun State.possibleActions(): List<List<Action>> = buildList {
                         ll[1].forEach { l1 ->
                             if ((l0 is Move && l1 is Open) || (l0 is Open && l1 is Move) ||
                                 (l0 is Move && l1 is Move && l0.id != l1.id) ||
-                                (l0 is Open && l1 is Open && l0.id != l1.id) ||
-                                (l0 is Wait || l1 is Wait)
+                                (l0 is Open && l1 is Open && l0.id != l1.id)
                             )
                                 add(listOf(l0, l1))
                         }
                     }
-                    if (ll[0].isEmpty() && ll[1].isNotEmpty()) ll[1].forEach { l1 -> add(listOf(Wait, l1)) }
-                    if (ll[0].isNotEmpty() && ll[1].isEmpty()) ll[0].forEach { l0 -> add(listOf(l0, Wait)) }
+//                    if (ll[0].isEmpty() && ll[1].isNotEmpty()) ll[1].forEach { l1 -> add(listOf(Wait, l1)) }
+//                    if (ll[0].isNotEmpty() && ll[1].isEmpty()) ll[0].forEach { l0 -> add(listOf(l0, Wait)) }
+                    if (ll[0].isEmpty() && ll[1].isNotEmpty()) ll[1].forEach { l1 -> add(listOf(Move(pos[0], 1), l1)) }
+                    if (ll[0].isNotEmpty() && ll[1].isEmpty()) ll[0].forEach { l0 -> add(listOf(l0, Move(pos[1], 1))) }
                 }
 
                 else -> TODO()
@@ -198,8 +202,8 @@ fun main() {
 
     execute(::part1, test, 1651)
     execute(::part1, input, 2359)
-//    TODO()
     execute(::part2, test, 1707)
+    TODO()
     execute(::part2, input)
 }
 
