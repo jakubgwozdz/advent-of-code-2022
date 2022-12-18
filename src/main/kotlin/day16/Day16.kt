@@ -187,7 +187,6 @@ fun main() {
     execute(::part1, test, 1651)
     execute(::part1, input, 2359)
     execute(::part2, test, 1707)
-    TODO()
     execute(::part2, input)
 }
 
