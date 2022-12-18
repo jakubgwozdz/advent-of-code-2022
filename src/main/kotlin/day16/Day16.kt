@@ -24,11 +24,6 @@ class Graph(val valves: Map<String, Valve>) {
                 endOp = { it == e }
             )!!.let { Move(e, it.size) }
         }
-    val opens = valves.filterValues { it.rate > 0 }.keys.associateWith { Open(it) }
-//        .also {
-//            it.forEach(::println)
-////            TODO()
-//        }
 }
 
 sealed interface Action {
@@ -38,13 +33,6 @@ sealed interface Action {
 
 data class Move(override val id: String, override val dist: Int) : Action {
     override fun toString() = "->$id($dist)"
-}
-
-data class Open(override val id: String) : Action {
-    override val dist: Int
-        get() = 0
-
-    override fun toString() = "^$id"
 }
 
 var pppp = 0L
@@ -59,10 +47,10 @@ data class State(
     val path: List<List<Action>> = emptyList(),
 ) {
     operator fun plus(actions: List<Action>): State {
-//        val newOpen = actions.filterIsInstance<Move>().filter { it.dist == 0 }.map(Move::id)
         val newPos = actions.map { it.id }
         val newDist = actions.map { it.dist - 1 }
-        val newOpen = actions.filterIsInstance<Open>().map(Open::id)
+//        val newOpen = actions.filterIsInstance<Open>().map(Open::id)
+        val newOpen = actions.filterIsInstance<Move>().filter { it.dist == 0 }.map(Move::id)
         var timeElapsed = 1
         val newScore = score + newOpen.sumOf { graph[it].rate * (timeLeft - timeElapsed) }
         return copy(
@@ -87,7 +75,7 @@ private fun State.possibleActions(): List<List<Action>> = buildList {
         pos.mapIndexed { index, p ->
             buildList<Action> {
                 if (distances[index] > 0) add(Move(p, distances[index]))
-                else if (p in closed) add(graph.opens[p]!!)
+                else if (p in closed) add(Move(p, 0))
                 else {
                     val notCurr = closed.filter { it != p && it !in pos }
                     val next = notCurr.associateWith { t -> graph.moves[p to t] ?: error("No path from $p to $t") }
@@ -101,11 +89,7 @@ private fun State.possibleActions(): List<List<Action>> = buildList {
                 2 -> {
                     ll[0].forEach { l0 ->
                         ll[1].forEach { l1 ->
-                            if ((l0 is Move && l1 is Open) || (l0 is Open && l1 is Move) ||
-                                (l0 is Move && l1 is Move && l0.id != l1.id) ||
-                                (l0 is Open && l1 is Open && l0.id != l1.id)
-                            )
-                                add(listOf(l0, l1))
+                            if (l0.id != l1.id) add(listOf(l0, l1))
                         }
                     }
 //                    if (ll[0].isEmpty() && ll[1].isNotEmpty()) ll[1].forEach { l1 -> add(listOf(Wait, l1)) }
