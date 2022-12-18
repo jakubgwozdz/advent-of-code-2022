@@ -88,24 +88,35 @@ private fun CharArray.toInt() = fold(0) { acc, c ->
 
 private fun solve(input: String, times: Long) = input.trim().let { winds ->
     var windIndex = 0
-    val period = winds.length * shapes.count() * 5 * 5 * 7 * 2 // found manually
     val chamber = Chamber()
     var done = 0L
+    var height = 0L
 
+    var snapshotShapeIdx = 0
+    var snapshotWindIdx = 0
+    val snapshotChamber = IntArray(40)
+    var snapshotHeight = 0L
+    val snapshotAt = 1000L
+    var period = 0L
     var delta = 0L
     var repetitions = 0L
-    var prev = 0L
 
-    var height = 0L
     while (done < times) {
-        val shape = shapes[(done % shapes.size).toInt()]
-        if (done % period == 1000L) {
-            delta = height - prev
-            prev = height
-            if (done / period == 1L) {
-                repetitions = (times / period) - (done / period)
-                val newDone = done + repetitions * period
-                done = newDone
+        val shapeIdx = (done % shapes.size).toInt()
+        val shape = shapes[shapeIdx]
+
+        if (done == snapshotAt) {
+            snapshotHeight = height
+            snapshotShapeIdx = shapeIdx
+            snapshotWindIdx = windIndex
+            snapshotChamber.indices.forEach { snapshotChamber[it] = chamber[height - it] }
+        }
+        if (done > snapshotAt && snapshotHeight > 0 && period == 0L) {
+            if (snapshotWindIdx == windIndex && snapshotShapeIdx == shapeIdx && snapshotChamber.indices.all { snapshotChamber[it] == chamber[height - it] }) {
+                delta = height - snapshotHeight
+                period = done - snapshotAt
+                repetitions = (times / period) - (done / period) - 1
+                done += repetitions * period
             }
         }
         var x = 3
@@ -113,7 +124,7 @@ private fun solve(input: String, times: Long) = input.trim().let { winds ->
         var falling = true
         while (falling) {
             val dir = winds[windIndex % winds.length]
-            windIndex++
+            windIndex = (windIndex + 1) % winds.length
             if (dir == '>') {
                 if (chamber.canGo(shape, x + 1, y)) x += 1
             } else if (dir == '<') {
