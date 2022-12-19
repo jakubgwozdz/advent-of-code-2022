@@ -176,5 +176,5 @@ fun main() {
     execute(::part1, test, 33)
     execute(::part1, input, 817)
 //    execute(::part2, test, 56 * 62)
-//    execute(::part2, input)
+    execute(::part2, input)
 }
