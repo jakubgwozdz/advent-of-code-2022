@@ -11,7 +11,9 @@ fun part1(input: String) = input.parseRecords(regex, ::parse)
     .sumOf(Blueprint::quality)
 
 fun part2(input: String) = input.parseRecords(regex, ::parse)
-    .count()
+    .take(3)
+    .map { it.score(32) }
+    .fold(1L, Long::times)
 
 private data class Blueprint(
     val id: Int,
@@ -23,16 +25,12 @@ private data class Blueprint(
     val geodeRobotObsidians: Long,
 )
 
-//private fun Blueprint.possibleExits(state: State, timeLeft: Int) = buildList {
-//}
-
 private data class State(
     val geodeRobots: Long = 0, val geodes: Long = 0, val obsidianRobots: Long = 0, val obsidians: Long = 0,
     val clayRobots: Long = 0, val clays: Long = 0, val oreRobots: Long = 1, val ores: Long = 0,
 )
 
 private fun State.score(timeLeft: Int) = geodeRobots * timeLeft + geodes
-
 
 private enum class Order { None, OreRobot, ClayRobot, ObsidianRobot, GeodeRobot }
 
@@ -46,6 +44,18 @@ private fun Blueprint.exits(state: State, timeLeft: Int) = buildList {
 //    } else if (state.obsidianRobots == 0L && timeLeft <= geodeRobotObsidians) {
     } else
         if (state.ores >= geodeRobotOres && state.obsidians >= geodeRobotObsidians) this.add(Order.GeodeRobot)
+        else if (state.ores >= obsidianRobotOres && state.obsidians >= obsidianRobotClays &&
+            state.obsidianRobots < geodeRobotObsidians &&
+            state.oreRobots >= geodeRobotOres + obsidianRobotOres - 1 &&
+            state.oreRobots >= clayRobotOres + obsidianRobotOres - 1 &&
+            state.oreRobots >= oreRobotOres + obsidianRobotOres - 1
+        ) this.add(Order.ObsidianRobot)
+        else if (state.ores >= clayRobotOres && state.obsidians >= obsidianRobotClays &&
+            state.obsidianRobots < geodeRobotObsidians &&
+            state.oreRobots >= geodeRobotOres + clayRobotOres - 1 &&
+            state.oreRobots >= obsidianRobotOres + clayRobotOres - 1 &&
+            state.oreRobots >= oreRobotOres + clayRobotOres - 1
+        ) this.add(Order.ClayRobot)
         else {
             if (state.ores >= obsidianRobotOres && state.clays >= obsidianRobotClays && state.obsidianRobots < geodeRobotObsidians) this.add(
                 Order.ObsidianRobot
@@ -105,16 +115,18 @@ private fun Blueprint.exits(state: State, timeLeft: Int) = buildList {
 }.sortedWith(comparator(timeLeft))
 
 private fun Blueprint.quality(): Long {
+    val time = 24
 
+    val score = score(time)
+    return id * (score)
+}
+
+private fun Blueprint.score(time: Int): Long {
     var tested = 0L
     var best: State = State()
-    var bestTL = 24
-    val comparator = compareByDescending<Pair<State, Int>> { (it, timeLeft) -> it.score(timeLeft) }
-        .thenByDescending { (it, timeLeft) -> it.obsidians + it.obsidianRobots * timeLeft }
-        .thenByDescending { (it, timeLeft) -> it.clays + it.clayRobots * timeLeft }
-        .thenByDescending { (it, timeLeft) -> it.ores + it.oreRobots * timeLeft }
+    var bestTL = time
     val stack = Stack<Pair<State, Int>>()
-        .apply { offer(best to 24) }
+        .apply { offer(best to time) }
     val states = mutableMapOf<State, Int>()
     var mark = TimeSource.Monotonic.markNow()
     while (stack.isNotEmpty()) {
@@ -125,7 +137,7 @@ private fun Blueprint.quality(): Long {
             states[state] = timeLeft
             if (state.score(timeLeft) > best.score(bestTL)) {
                 best = state
-//                    .also { println("state $state @ $timeLeft = ${state.score(timeLeft)}") }
+                    .also { println("state $state @ $timeLeft = ${state.score(timeLeft)}") }
                 bestTL = timeLeft
             }
             if (timeLeft > 0) {
@@ -139,12 +151,13 @@ private fun Blueprint.quality(): Long {
             }
         }
         if (mark.elapsedNow() > 1.seconds) {
-//            println("tested $tested, stack size ${stack.size}, states ${states.size}")
+            println("tested $tested, stack size ${stack.size}, states ${states.size}")
             mark = TimeSource.Monotonic.markNow()
         }
     }
     println(tested)
-    return id * (best.score(bestTL))
+    return best.score(bestTL)
+        .also { println("$best@$bestTL gives $it geodes") }
 }
 
 private val regex =
@@ -162,6 +175,6 @@ fun main() {
             """.trimIndent()
     execute(::part1, test, 33)
     execute(::part1, input, 817)
-    execute(::part2, test, 51 * 62)
-    execute(::part2, input)
+//    execute(::part2, test, 56 * 62)
+//    execute(::part2, input)
 }
