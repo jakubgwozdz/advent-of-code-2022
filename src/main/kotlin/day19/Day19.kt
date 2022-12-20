@@ -57,13 +57,12 @@ private fun Blueprint.exits(state: State, timeLeft: Int) = buildList {
             state.oreRobots >= oreRobotOres + clayRobotOres - 1
         ) this.add(Order.ClayRobot)
         else {
-            if (state.ores >= obsidianRobotOres && state.clays >= obsidianRobotClays && state.obsidianRobots < geodeRobotObsidians) this.add(
-                Order.ObsidianRobot
-            )
-            if (state.ores >= clayRobotOres && state.clayRobots < obsidianRobotClays) this.add(Order.ClayRobot)
-            if (state.ores >= oreRobotOres && state.oreRobots < obsidianRobotOres + clayRobotOres + geodeRobotOres) this.add(
-                Order.OreRobot
-            )
+            if (state.ores >= obsidianRobotOres && state.clays >= obsidianRobotClays && state.obsidianRobots < geodeRobotObsidians)
+                this.add(Order.ObsidianRobot)
+            if (state.ores >= clayRobotOres && state.clayRobots < obsidianRobotClays)
+                this.add(Order.ClayRobot)
+            if (state.ores >= oreRobotOres && state.oreRobots < obsidianRobotOres + clayRobotOres + geodeRobotOres)
+                this.add(Order.OreRobot)
             if (state.ores < oreRobotOres ||
                 state.ores < clayRobotOres ||
                 state.ores < obsidianRobotOres ||
@@ -121,11 +120,52 @@ private fun Blueprint.quality(): Long {
     return id * (score)
 }
 
+private typealias StateWithTimeLeft = Pair<State, Int>
+
+private fun StateWithTimeLeft.stronglyBetter(that: StateWithTimeLeft) =
+    this != that && this.second >= that.second
+            && this.first.geodeRobots >= that.first.geodeRobots
+            && this.first.geodes >= that.first.geodes
+            && this.first.obsidianRobots >= that.first.obsidianRobots
+            && this.first.obsidians >= that.first.obsidians
+            && this.first.clayRobots >= that.first.clayRobots
+            && this.first.clays >= that.first.clays
+            && this.first.oreRobots >= that.first.oreRobots
+            && this.first.ores >= that.first.ores
+
+//class FilteringQueue<E : Any>(val comparator: Comparator<E>, val betterOp: (E, E) -> Boolean) : Queue<E>() {
+//    override fun offer(e: E) {
+//        val worth = backing.isEmpty() || !backing.all { betterOp(it, e) }
+//        backing.removeIf { betterOp(e, it) }
+//
+//        if (worth) {
+//            val index = backing.binarySearch(e, comparator).let {
+//                if (it < 0) -it - 1 else it
+//            }
+//            backing.add(index, e)
+//        }
+//    }
+//}
+//
+class FilteringStack<E : Any>(val betterOp: (E, E) -> Boolean) : Stack<E>() {
+    override fun offer(e: E) {
+        val worth = backing.isEmpty() || !backing.all { betterOp(it, e) }
+        backing.removeIf { betterOp(e, it) }
+
+        if (worth) {
+            backing.add(e)
+        }
+    }
+}
+
 private fun Blueprint.score(time: Int): Long {
     var tested = 0L
     var best: State = State()
     var bestTL = time
-    val stack = Stack<Pair<State, Int>>()
+    val stack = FilteringStack<StateWithTimeLeft>(
+//        comparator = { (s1, t1), (s2, t2) -> s1.score(t1).compareTo(s2.score(t2)) },
+        betterOp = { s1, s2 -> s1.stronglyBetter(s2) }
+    )
         .apply { offer(best to time) }
     val states = mutableMapOf<State, Int>()
     var mark = TimeSource.Monotonic.markNow()
@@ -134,7 +174,7 @@ private fun Blueprint.score(time: Int): Long {
         val (state, timeLeft) = stack.poll()
         if (states[state].let { it == null || it < timeLeft }) {
 
-            states[state] = timeLeft
+//            states[state] = timeLeft
             if (state.score(timeLeft) > best.score(bestTL)) {
                 best = state
                     .also { println("state $state @ $timeLeft = ${state.score(timeLeft)}") }
@@ -154,6 +194,7 @@ private fun Blueprint.score(time: Int): Long {
             println("tested $tested, stack size ${stack.size}, states ${states.size}")
             mark = TimeSource.Monotonic.markNow()
         }
+
     }
     println(tested)
     return best.score(bestTL)
