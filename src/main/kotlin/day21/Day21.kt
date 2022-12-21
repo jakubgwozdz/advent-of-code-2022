@@ -1,3 +1,5 @@
+@file:Suppress("SpellCheckingInspection")
+
 package day21
 
 import execute
@@ -21,27 +23,15 @@ fun part2(input: String) = input.lineSequence().filterNot { it.isBlank() }
 //    .let { it.mapValues { (_, desc) -> desc.flatten() } }
     .let { it["root"]!! as OpMonkey }
     .let { root ->
-        var step = 0
-        println(step++)
-        println("${root.left} = ${root.right}\n\n")
         var (l, r) = root.run { left.flatten() to right.flatten() }
-        println()
-        println(step++)
-        println("$l = $r\n")
         while (l !is HumnMonkey && r !is HumnMonkey) {
             val (l1, r1) = when {
                 l is OpMonkey && r is NumMonkey -> l.inverseTo(r)
                 l is NumMonkey && r is OpMonkey -> r.inverseTo(l)
-                l is OpMonkey && r is OpMonkey && l.left == r -> l.reduceLeft()
-                l is OpMonkey && r is OpMonkey && l.right == r -> l.reduceRight()
-                l is OpMonkey && r is OpMonkey && l == r.left -> r.reduceLeft()
-                l is OpMonkey && r is OpMonkey && l == r.right -> r.reduceRight()
                 else -> wtf(l to r)
             }
             val l1f = l1.flatten()
             val r1f = r1.flatten()
-            println(step++)
-            println("${if (l1 == l1f) "$l1" else "$l1 = $l1f"} = ${if (r1 == r1f) "$r1" else "$r1 = $r1f"}\n")
             l = l1f
             r = r1f
         }
@@ -126,20 +116,6 @@ private data class OpMonkey(val left: Monkey, val op: String, val right: Monkey)
             else -> wtf(this)
         }
             .let { (l, r) -> l to r }
-    }
-
-    fun reduceLeft() = when (op) {
-        "+", "-" -> right to 0L.monkey
-        "*", "/" -> right to 1L.monkey
-        else -> wtf(this)
-    }
-
-    fun reduceRight() = when (op) {
-        "+" -> left to 0L.monkey
-        "*" -> left to 1L.monkey
-        "-" -> left to OpMonkey(right, "*", 2L.monkey)
-        "/" -> left to OpMonkey(right, "*", right)
-        else -> wtf(this)
     }
 }
 
