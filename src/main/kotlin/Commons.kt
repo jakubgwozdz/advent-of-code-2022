@@ -144,5 +144,4 @@ inline fun <T> execute(
     return duration
 }
 
-@Suppress("NOTHING_TO_INLINE")
-inline fun wtf(a: Any): Nothing = error("WTF `$a`")
+fun wtf(a: Any): Nothing = error("WTF `$a`")

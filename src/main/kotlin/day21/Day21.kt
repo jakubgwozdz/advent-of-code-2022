@@ -4,6 +4,9 @@ import execute
 import readAllText
 import wtf
 
+private val Long.monkey: NumMonkey
+    get() = NumMonkey(this)
+
 fun part1(input: String) = input.lineSequence().filterNot { it.isBlank() }
     .map { parse(it) }
     .toMap()
@@ -15,22 +18,37 @@ fun part2(input: String) = input.lineSequence().filterNot { it.isBlank() }
     .toMap()
     .let { it + ("humn" to HumnDesc) }
     .let { it.mapValues { (_, desc) -> desc.build(it) } }
-    .let { it.mapValues { (_, desc) -> desc.flatten() } }
+//    .let { it.mapValues { (_, desc) -> desc.flatten() } }
     .let { it["root"]!! as OpMonkey }
     .let { root ->
-        var (l, r) = root.run { m1.flatten() to m2.flatten() }
+        var step = 0
+        println(step++)
+        println("${root.left} = ${root.right}\n\n")
+        var (l, r) = root.run { left.flatten() to right.flatten() }
+        println()
+        println(step++)
+        println("$l = $r\n")
         while (l !is HumnMonkey && r !is HumnMonkey) {
             val (l1, r1) = when {
-                l is OpMonkey && r is NumMonkey -> l.inverseTo(r.v)
-                l is NumMonkey && r is OpMonkey -> r.inverseTo(l.v)
+                l is OpMonkey && r is NumMonkey -> l.inverseTo(r)
+                l is NumMonkey && r is OpMonkey -> r.inverseTo(l)
+                l is OpMonkey && r is OpMonkey && l.left == r -> l.reduceLeft()
+                l is OpMonkey && r is OpMonkey && l.right == r -> l.reduceRight()
+                l is OpMonkey && r is OpMonkey && l == r.left -> r.reduceLeft()
+                l is OpMonkey && r is OpMonkey && l == r.right -> r.reduceRight()
                 else -> wtf(l to r)
             }
-            l = l1
-            r = r1
+            val l1f = l1.flatten()
+            val r1f = r1.flatten()
+            println(step++)
+            println("${if (l1 == l1f) "$l1" else "$l1 = $l1f"} = ${if (r1 == r1f) "$r1" else "$r1 = $r1f"}\n")
+            l = l1f
+            r = r1f
         }
-        l to r
+        if (l is HumnMonkey) r.calc()
+        else if (r is HumnMonkey) l.calc()
+        else wtf(l to r)
     }
-    .let { (m1, m2) -> "$m1 = $m2" }
 
 private sealed interface MonkeyDesc {
     fun build(map: Map<String, MonkeyDesc>): Monkey
@@ -38,13 +56,13 @@ private sealed interface MonkeyDesc {
 
 private data class NumDesc(val v: Long) : MonkeyDesc {
     private var cached: Monkey? = null
-    override fun build(map: Map<String, MonkeyDesc>) = cached ?: NumMonkey(v).also { cached = it }
+    override fun build(map: Map<String, MonkeyDesc>) = cached ?: v.monkey.also { cached = it }
 }
 
-private data class OpDesc(val m1id: String, val op: String, val m2id: String) : MonkeyDesc {
+private data class OpDesc(val leftId: String, val op: String, val rightId: String) : MonkeyDesc {
     private var cached: Monkey? = null
     override fun build(map: Map<String, MonkeyDesc>) =
-        cached ?: OpMonkey(map[m1id]!!.build(map), op, map[m2id]!!.build(map)).also { cached = it }
+        cached ?: OpMonkey(map[leftId]!!.build(map), op, map[rightId]!!.build(map)).also { cached = it }
 }
 
 private object HumnDesc : MonkeyDesc {
@@ -68,43 +86,62 @@ private object HumnMonkey : Monkey {
     override fun toString() = "X"
 }
 
-private data class OpMonkey(val m1: Monkey, val op: String, val m2: Monkey) : Monkey {
+private data class OpMonkey(val left: Monkey, val op: String, val right: Monkey) : Monkey {
     var cached: Long? = null
     var cachedFlatten: Monkey? = null
     override fun calc(): Long {
-        val m1Calc = m1.calc()
-        val m2Calc = m2.calc()
+        val leftCalc = left.calc()
+        val rightCalc = right.calc()
         return cached ?: when (op) {
-            "+" -> m1Calc + m2Calc
-            "-" -> m1Calc - m2Calc
-            "*" -> m1Calc * m2Calc
-            "/" -> m1Calc / m2Calc
+            "+" -> leftCalc + rightCalc
+            "-" -> leftCalc - rightCalc
+            "*" -> leftCalc * rightCalc
+            "/" -> leftCalc / rightCalc
             else -> wtf(this.toString())
         }.also { cached = it }
     }
 
     override fun flatten(): Monkey {
-        val m1Flat = m1.flatten()
-        val m2Flat = m2.flatten()
-        return cachedFlatten ?: (if (m1Flat is NumMonkey && m2Flat is NumMonkey) NumMonkey(calc()) else OpMonkey(
-            m1Flat,
-            op,
-            m2Flat
-        ))
+        val leftFlat = left.flatten()
+        val rightFlat = right.flatten()
+        return cachedFlatten ?: (
+                if (leftFlat is NumMonkey && rightFlat is NumMonkey) calc().monkey
+                else OpMonkey(leftFlat, op, rightFlat))
             .also { cachedFlatten = it }
     }
 
-    override fun toString() = "($m1$op$m2)"
-    fun inverseTo(calc: Long): Pair<Monkey, Monkey> {
-        val m1Flat = m1.flatten()
-        val m2Flat = m2.flatten()
-        TODO("Not yet implemented")
+    override fun toString() = "($left$op$right)"
+    fun inverseTo(other: NumMonkey): Pair<Monkey, Monkey> {
+        val leftToCalc = left.flatten() !is NumMonkey
+        val rightToCalc = right.flatten() !is NumMonkey
+        return when {
+            leftToCalc && op == "+" -> left to OpMonkey(other, "-", right)
+            rightToCalc && op == "+" -> right to OpMonkey(other, "-", left)
+            leftToCalc && op == "*" -> left to OpMonkey(other, "/", right)
+            rightToCalc && op == "*" -> right to OpMonkey(other, "/", left)
+            leftToCalc && op == "-" -> left to OpMonkey(other, "+", right)
+            rightToCalc && op == "-" -> right to OpMonkey(left, "-", other)
+            leftToCalc && op == "/" -> left to OpMonkey(other, "*", right)
+            rightToCalc && op == "/" -> right to OpMonkey(left, "/", other)
+            else -> wtf(this)
+        }
+            .let { (l, r) -> l to r }
+    }
+
+    fun reduceLeft() = when (op) {
+        "+", "-" -> right to 0L.monkey
+        "*", "/" -> right to 1L.monkey
+        else -> wtf(this)
+    }
+
+    fun reduceRight() = when (op) {
+        "+" -> left to 0L.monkey
+        "*" -> left to 1L.monkey
+        "-" -> left to OpMonkey(right, "*", 2L.monkey)
+        "/" -> left to OpMonkey(right, "*", right)
+        else -> wtf(this)
     }
 }
-
-private sealed interface Either<T, U>
-private data class Left<T>(val left: T) : Either<T, Nothing>
-private data class Right<T>(val right: T) : Either<Nothing, T>
 
 private fun parse(line: String): Pair<String, MonkeyDesc> {
     val (id, desc) = line.split(": ")
