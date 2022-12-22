@@ -20,7 +20,6 @@ fun part2(input: String) = input.lineSequence().filterNot { it.isBlank() }
     .toMap()
     .let { it + ("humn" to HumnDesc) }
     .let { it.mapValues { (_, desc) -> desc.build(it) } }
-//    .let { it.mapValues { (_, desc) -> desc.flatten() } }
     .let { it["root"]!! as OpMonkey }
     .let { root ->
         var (l, r) = root.run { left.flatten() to right.flatten() }

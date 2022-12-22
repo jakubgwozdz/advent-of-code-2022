@@ -1,3 +1,10 @@
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.flattenMerge
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.runBlocking
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.jvm.internal.FunctionReference
@@ -145,3 +152,11 @@ inline fun <T> execute(
 }
 
 fun wtf(a: Any): Nothing = error("WTF `$a`")
+
+@OptIn(FlowPreview::class)
+fun <T, R> Sequence<T>.parallelMapUnordered(op: (T) -> R): List<R> = runBlocking {
+    asFlow()
+        .map { t -> flow { emit(op(t)) } }
+        .flattenMerge()
+        .toList()
+}

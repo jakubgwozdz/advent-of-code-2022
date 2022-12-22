@@ -1,5 +1,6 @@
 package day19
 
+import PriorityQueue
 import Stack
 import execute
 import parseRecords
@@ -8,7 +9,8 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
 fun part1(input: String) = input.parseRecords(regex, ::parse)
-    .sumOf(Blueprint::quality)
+    .map { it.id to it.score(24) }
+    .sumOf { (id, score) -> id * score }
 
 fun part2(input: String) = input.parseRecords(regex, ::parse)
     .take(3)
@@ -30,7 +32,7 @@ private data class State(
     val clayRobots: Long = 0, val clays: Long = 0, val oreRobots: Long = 1, val ores: Long = 0,
 )
 
-private fun State.score(timeLeft: Int) = geodeRobots * timeLeft + geodes
+private fun State.score(timeLeft: Int) = geodeRobots * timeLeft + geodes + (timeLeft * (timeLeft + 1)) / 2
 
 private enum class Order { None, OreRobot, ClayRobot, ObsidianRobot, GeodeRobot }
 
@@ -113,13 +115,6 @@ private fun Blueprint.exits(state: State, timeLeft: Int) = buildList {
     )
 }.sortedWith(comparator(timeLeft))
 
-private fun Blueprint.quality(): Long {
-    val time = 24
-
-    val score = score(time)
-    return id * (score)
-}
-
 private typealias StateWithTimeLeft = Pair<State, Int>
 
 private fun StateWithTimeLeft.stronglyBetter(that: StateWithTimeLeft) =
@@ -162,11 +157,15 @@ private fun Blueprint.score(time: Int): Long {
     var tested = 0L
     var best: State = State()
     var bestTL = time
-    val stack = FilteringStack<StateWithTimeLeft>(
-//        comparator = { (s1, t1), (s2, t2) -> s1.score(t1).compareTo(s2.score(t2)) },
-        betterOp = { s1, s2 -> s1.stronglyBetter(s2) }
-    )
-        .apply { offer(best to time) }
+    val stack =
+//        FilteringStack<StateWithTimeLeft>(
+////        comparator = { (s1, t1), (s2, t2) -> s1.score(t1).compareTo(s2.score(t2)) },
+//            betterOp = { s1, s2 -> s1.stronglyBetter(s2) }
+//        )
+        PriorityQueue<StateWithTimeLeft>(
+            comparator = { (s1, t1), (s2, t2) -> -s1.score(t1).compareTo(s2.score(t2)) },
+        )
+            .apply { offer(best to time) }
     val states = mutableMapOf<State, Int>()
     var mark = TimeSource.Monotonic.markNow()
     while (stack.isNotEmpty()) {
@@ -216,6 +215,6 @@ fun main() {
             """.trimIndent()
     execute(::part1, test, 33)
     execute(::part1, input, 817)
-//    execute(::part2, test, 56 * 62)
+    execute(::part2, test, 56 * 62)
     execute(::part2, input)
 }
