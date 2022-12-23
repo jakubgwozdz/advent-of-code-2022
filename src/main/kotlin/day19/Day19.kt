@@ -27,9 +27,9 @@ private data class Blueprint(
 }
 
 private data class State(
-    val timeLeft: Int,
-    val geodeRobots: Long = 0, val geodes: Long = 0, val obsidianRobots: Long = 0, val obsidians: Long = 0,
-    val clayRobots: Long = 0, val clays: Long = 0, val oreRobots: Long = 1, val ores: Long = 0,
+    val oreRobots: Long = 1,
+    val clayRobots: Long = 0, val obsidianRobots: Long = 0, val geodeRobots: Long = 0, val ores: Long = 0,
+    val clays: Long = 0, val obsidians: Long = 0, val geodes: Long = 0, val timeLeft: Int,
 )
 
 private fun State.score() = geodes + geodeRobots * timeLeft
@@ -76,7 +76,7 @@ private fun Blueprint.exits(state: State) =
         check(geode >= 0)
         check(timeLeft >= 0)
         State(
-            timeLeft, geodeRobots, geode, obsidianRobots, obsidians, clayRobots, clays, oreRobots, ores,
+            oreRobots, clayRobots, obsidianRobots, geodeRobots, ores, clays, obsidians, geode, timeLeft,
         )
     }
 
@@ -129,7 +129,7 @@ private fun Blueprint.possibleOrders(state: State) = buildList {
 
 
 private fun Blueprint.score(time: Int): Long {
-    var best = State(time)
+    var best = State(timeLeft = time)
     val stack = Stack<State>()
         .apply { offer(best) }
     while (stack.isNotEmpty()) {
