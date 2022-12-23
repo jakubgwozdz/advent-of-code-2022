@@ -25,95 +25,97 @@ private data class Blueprint(
     val obsidianRobotClays: Long,
     val geodeRobotOres: Long,
     val geodeRobotObsidians: Long,
-)
+) {
+    val maxOreRequired by lazy { listOf(oreRobotOres, clayRobotOres, obsidianRobotOres, geodeRobotOres).max() }
+}
 
 private data class State(
+    val timeLeft: Int,
     val geodeRobots: Long = 0, val geodes: Long = 0, val obsidianRobots: Long = 0, val obsidians: Long = 0,
     val clayRobots: Long = 0, val clays: Long = 0, val oreRobots: Long = 1, val ores: Long = 0,
-)
+) : Comparable<State> {
+    override fun compareTo(other: State): Int = comparator.compare(this, other)
+}
 
-private fun State.score(timeLeft: Int) = geodeRobots * timeLeft + geodes + (timeLeft * (timeLeft + 1)) / 2
+private fun State.score() = geodes + geodeRobots * timeLeft
 
 private enum class Order { None, OreRobot, ClayRobot, ObsidianRobot, GeodeRobot }
 
-private fun comparator(timeLeft: Int) = compareBy<State> { it.score(timeLeft) }
-    .thenBy { it.obsidians + it.obsidianRobots * timeLeft }
-    .thenBy { it.clays + it.clayRobots * timeLeft }
-    .thenBy { it.ores + it.oreRobots * timeLeft }
+private val comparator = compareByDescending<State> { it.score() }
+    .thenByDescending { it.obsidians + it.obsidianRobots * it.timeLeft }
+    .thenByDescending { it.clays + it.clayRobots * it.timeLeft }
+    .thenByDescending { it.ores + it.oreRobots * it.timeLeft }
 
-private fun Blueprint.exits(state: State, timeLeft: Int) = buildList {
-    if (timeLeft <= 0) {
-//    } else if (state.obsidianRobots == 0L && timeLeft <= geodeRobotObsidians) {
-    } else
-        if (state.ores >= geodeRobotOres && state.obsidians >= geodeRobotObsidians) this.add(Order.GeodeRobot)
-        else if (state.ores >= obsidianRobotOres && state.obsidians >= obsidianRobotClays &&
-            state.obsidianRobots < geodeRobotObsidians &&
-            state.oreRobots >= geodeRobotOres + obsidianRobotOres - 1 &&
-            state.oreRobots >= clayRobotOres + obsidianRobotOres - 1 &&
-            state.oreRobots >= oreRobotOres + obsidianRobotOres - 1
-        ) this.add(Order.ObsidianRobot)
-        else if (state.ores >= clayRobotOres && state.obsidians >= obsidianRobotClays &&
-            state.obsidianRobots < geodeRobotObsidians &&
-            state.oreRobots >= geodeRobotOres + clayRobotOres - 1 &&
-            state.oreRobots >= obsidianRobotOres + clayRobotOres - 1 &&
-            state.oreRobots >= oreRobotOres + clayRobotOres - 1
-        ) this.add(Order.ClayRobot)
-        else {
-            if (state.ores >= obsidianRobotOres && state.clays >= obsidianRobotClays && state.obsidianRobots < geodeRobotObsidians)
-                this.add(Order.ObsidianRobot)
-            if (state.ores >= clayRobotOres && state.clayRobots < obsidianRobotClays)
-                this.add(Order.ClayRobot)
-            if (state.ores >= oreRobotOres && state.oreRobots < obsidianRobotOres + clayRobotOres + geodeRobotOres)
-                this.add(Order.OreRobot)
-            if (state.ores < oreRobotOres ||
-                state.ores < clayRobotOres ||
-                state.ores < obsidianRobotOres ||
-                state.ores < geodeRobotOres ||
-                state.clayRobots > 0 && state.clays < obsidianRobotClays ||
-                state.obsidianRobots > 0 && state.obsidians < geodeRobotObsidians
-            )
-                this.add(Order.None)
-        }
-}.map {
-    var ores1 = state.ores + state.oreRobots
-    var clays1 = state.clays + state.clayRobots
-    var obsidians1 = state.obsidians + state.obsidianRobots
-    var geode1 = state.geodes + state.geodeRobots
-    var oreRobots1 = state.oreRobots
-    var clayRobots1 = state.clayRobots
-    var obsidianRobots1 = state.obsidianRobots
-    var geodeRobots1 = state.geodeRobots
-    when (it) {
-        Order.OreRobot -> {
-            ores1 -= oreRobotOres
-            oreRobots1++
-        }
+private fun Blueprint.exits(state: State) =
+    if (!canBuildMoreGeodeRobots(state)) emptyList() else possibleOrders(state).map {
+        var ores1 = state.ores + state.oreRobots
+        var clays1 = state.clays + state.clayRobots
+        var obsidians1 = state.obsidians + state.obsidianRobots
+        var geode1 = state.geodes + state.geodeRobots
+        var oreRobots1 = state.oreRobots
+        var clayRobots1 = state.clayRobots
+        var obsidianRobots1 = state.obsidianRobots
+        var geodeRobots1 = state.geodeRobots
+        when (it) {
+            Order.OreRobot -> {
+                ores1 -= oreRobotOres
+                oreRobots1++
+            }
 
-        Order.ClayRobot -> {
-            ores1 -= clayRobotOres
-            clayRobots1++
-        }
+            Order.ClayRobot -> {
+                ores1 -= clayRobotOres
+                clayRobots1++
+            }
 
-        Order.ObsidianRobot -> {
-            ores1 -= obsidianRobotOres
-            clays1 -= obsidianRobotClays
-            obsidianRobots1++
-        }
+            Order.ObsidianRobot -> {
+                ores1 -= obsidianRobotOres
+                clays1 -= obsidianRobotClays
+                obsidianRobots1++
+            }
 
-        Order.GeodeRobot -> {
-            ores1 -= geodeRobotOres
-            obsidians1 -= geodeRobotObsidians
-            geodeRobots1++
-        }
+            Order.GeodeRobot -> {
+                ores1 -= geodeRobotOres
+                obsidians1 -= geodeRobotObsidians
+                geodeRobots1++
+            }
 
-        Order.None -> {
+            Order.None -> {
+            }
         }
+        check(ores1 >= 0)
+        check(clays1 >= 0)
+        check(obsidians1 >= 0)
+        check(geode1 >= 0)
+        State(
+            timeLeft = state.timeLeft - 1,
+            geodeRobots = geodeRobots1, geodes = geode1, obsidianRobots = obsidianRobots1, obsidians = obsidians1,
+            clayRobots = clayRobots1, clays = clays1, oreRobots = oreRobots1, ores = ores1,
+        )
+    }.sortedWith(comparator)
+
+private fun Blueprint.canBuildMoreGeodeRobots(state: State): Boolean {
+    val maxPossibleOres = state.ores + state.oreRobots * state.timeLeft + state.timeLeft * state.timeLeft / 2
+    val maxPossibleObsidians =
+        state.obsidians + state.obsidianRobots * state.timeLeft + state.timeLeft * state.timeLeft / 2
+    return state.timeLeft > 0 && geodeRobotOres <= maxPossibleOres && geodeRobotObsidians <= maxPossibleObsidians
+}
+
+private fun Blueprint.possibleOrders(state: State) = buildList {
+    val canBuildGeodeRobot = state.ores >= geodeRobotOres && state.obsidians >= geodeRobotObsidians
+    val canBuildObsidianRobot = state.ores >= obsidianRobotOres && state.clays >= obsidianRobotClays &&
+            state.obsidianRobots < geodeRobotObsidians
+    val canBuildClayRobot = state.ores >= clayRobotOres && state.clayRobots < obsidianRobotClays
+    val canBuildOreRobot = state.ores >= oreRobotOres && state.oreRobots < maxOreRequired
+
+    if (canBuildGeodeRobot) add(Order.GeodeRobot)
+    else {
+        if (canBuildObsidianRobot) add(Order.ObsidianRobot)
+        if (canBuildClayRobot) add(Order.ClayRobot)
+        if (canBuildOreRobot) add(Order.OreRobot)
+        add(Order.None)
     }
-    State(
-        geodeRobots = geodeRobots1, geodes = geode1, obsidianRobots = obsidianRobots1, obsidians = obsidians1,
-        clayRobots = clayRobots1, clays = clays1, oreRobots = oreRobots1, ores = ores1,
-    )
-}.sortedWith(comparator(timeLeft))
+}
+
 
 private typealias StateWithTimeLeft = Pair<State, Int>
 
@@ -155,49 +157,39 @@ class FilteringStack<E : Any>(val betterOp: (E, E) -> Boolean) : Stack<E>() {
 
 private fun Blueprint.score(time: Int): Long {
     var tested = 0L
-    var best: State = State()
-    var bestTL = time
+    var best = State(time)
     val stack =
 //        FilteringStack<StateWithTimeLeft>(
 ////        comparator = { (s1, t1), (s2, t2) -> s1.score(t1).compareTo(s2.score(t2)) },
 //            betterOp = { s1, s2 -> s1.stronglyBetter(s2) }
 //        )
-        PriorityQueue<StateWithTimeLeft>(
-            comparator = { (s1, t1), (s2, t2) -> -s1.score(t1).compareTo(s2.score(t2)) },
-        )
-            .apply { offer(best to time) }
-    val states = mutableMapOf<State, Int>()
+        PriorityQueue<State>(comparator = comparator)
+            .apply { offer(best) }
+    val states = mutableSetOf<State>()
     var mark = TimeSource.Monotonic.markNow()
     while (stack.isNotEmpty()) {
         tested++
-        val (state, timeLeft) = stack.poll()
-        if (states[state].let { it == null || it < timeLeft }) {
-
+        val state = stack.poll()
+        if (state !in states) {
+            states += state
 //            states[state] = timeLeft
-            if (state.score(timeLeft) > best.score(bestTL)) {
+            if (state.score() > best.score()) {
                 best = state
-                    .also { println("state $state @ $timeLeft = ${state.score(timeLeft)}") }
-                bestTL = timeLeft
+                    .also { println("state $state with score ${state.score()}") }
             }
-            if (timeLeft > 0) {
-                this.exits(state, timeLeft)
+            this.exits(state)
 //                    .also {
 //                        if (tested < 100) println("$timeLeft: $state -> $it")
 //                    }
-                    .forEach {
-                        stack.offer(it to timeLeft - 1)
-                    }
+                .forEach(stack::offer)
+            if (mark.elapsedNow() > 1.seconds) {
+                println("tested $tested, stack size ${stack.size}, states ${states.size}")
+                mark = TimeSource.Monotonic.markNow()
             }
         }
-        if (mark.elapsedNow() > 1.seconds) {
-            println("tested $tested, stack size ${stack.size}, states ${states.size}")
-            mark = TimeSource.Monotonic.markNow()
-        }
-
     }
     println(tested)
-    return best.score(bestTL)
-        .also { println("$best@$bestTL gives $it geodes") }
+    return best.score().also { println("$best gives $it geodes") }
 }
 
 private val regex =
