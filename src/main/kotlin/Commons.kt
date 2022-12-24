@@ -44,9 +44,10 @@ fun <T> Sequence<T>.splitBy(op: (T) -> Boolean): Sequence<List<T>> = with(iterat
     }
 }
 
-open class Queue<E : Any> {
+open class Queue<E : Any>(vararg initial: E) {
 
-    protected var backing: ArrayList<E> = ArrayList(11)
+    protected var backing: ArrayList<E> = ArrayList<E>(11)
+        .apply { addAll(initial) }
 
     val size get() = backing.size
 

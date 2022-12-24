@@ -4,8 +4,6 @@ import Queue
 import execute
 import readAllText
 import kotlin.math.absoluteValue
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.TimeSource
 
 typealias Pos = Pair<Int, Int>
 typealias Blizzard = Pair<Pos, Dir>
@@ -40,7 +38,7 @@ data class Valley(
             else -> TODO(this.toString())
         }
     }
-    val blizzardsByTime: Map<Int, Set<Pos>> = buildMap {
+    private val blizzardsByTime: Map<Int, Set<Pos>> = buildMap {
         var s = blizzards
         repeat(lcm) { time ->
             put(time, s.map { it.first }.toHashSet())
@@ -57,8 +55,23 @@ data class Valley(
 
 data class State(val pos: Pos, val timeElapsed: Int = 0)
 
-private fun State.excerpt(valley: Valley) = pos to timeElapsed % valley.lcm
-fun State.goTo(valley: Valley, exit: Pos) = solve(valley, this, exit)
+fun State.trimmed(valley: Valley) = copy(timeElapsed = timeElapsed % valley.lcm)
+
+fun State.goTo(valley: Valley, exit: Pos): State {
+    val queue = Queue(this)
+    val visited = mutableSetOf<State>()
+    while (true) {
+        val state = queue.poll()
+        val trimmed = state.trimmed(valley)
+        if (trimmed !in visited)
+            state.next(valley)
+                .forEach {
+                    if (it.pos == exit) return it
+                    if (it.trimmed(valley) !in visited) queue.offer(it)
+                }
+                .also { visited += trimmed }
+    }
+}
 
 fun part1(input: String): Int {
     val valley = parseValley(input)
@@ -74,34 +87,6 @@ fun part2(input: String): Int {
         .goTo(valley, valley.enter)
         .goTo(valley, valley.exit)
         .timeElapsed
-}
-
-private fun solve(valley: Valley, initial: State, exit: Pos): State {
-    val queue = Queue<State>()
-        .apply { offer(initial) }
-    var result: State? = null
-    val visited = mutableSetOf<Pair<Pos, Int>>()
-    var mark = TimeSource.Monotonic.markNow()
-    while (result == null) {
-        val state = queue.poll()
-        if (state.excerpt(valley) !in visited)
-            state.next(valley)
-                .forEach {
-                    if (it.excerpt(valley) !in visited) queue.offer(it)
-                    if (it.pos == exit) result = it
-                }
-                .also { visited += state.excerpt(valley) }
-                .also {
-                    if (mark.elapsedNow() > 1.seconds) {
-                        val dist = state.pos.manhattan(valley.exit)
-                        println(
-                            "visited ${visited.size}, queue size ${queue.size}, current dist $dist, current time ${state.timeElapsed}"
-                        )
-                        mark = TimeSource.Monotonic.markNow()
-                    }
-                }
-    }
-    return result!!
 }
 
 
