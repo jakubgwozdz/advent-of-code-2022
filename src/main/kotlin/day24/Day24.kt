@@ -1,6 +1,6 @@
 package day24
 
-import PriorityQueue
+import Queue
 import execute
 import readAllText
 import kotlin.math.absoluteValue
@@ -33,11 +33,22 @@ data class Valley(
     val exit: Pos,
     val blizzards: List<Blizzard>,
 ) {
-    val lcm = with(rows.count() to cols.count()) {
+    val lcm = with(rows.count() to cols.count()) { // hackaton style
         when (this) {
             (4 to 6) -> 12 // test input
             (25 to 120) -> 600 // real input
             else -> TODO(this.toString())
+        }
+    }
+    val blizzardsByTime: Map<Int, Set<Pos>> = buildMap {
+        var s = blizzards
+        repeat(lcm) { time ->
+            put(time, s.map { it.first }.toHashSet())
+            s = s.map { (p, dir) ->
+                val r = (p.first + dir.v.first).keepIn(rows)
+                val c = (p.second + dir.v.second).keepIn(cols)
+                Blizzard(r to c, dir)
+            }
         }
     }
 }
@@ -63,7 +74,9 @@ fun part2(input: String): Int {
 }
 
 private fun solve(valley: Valley, initial: State): State {
-    val queue = PriorityQueue<State>(compareBy<State> { it.timeElapsed }.thenBy { it.pos.manhattan(valley.exit) })
+    val comparator = compareBy<State> { it.timeElapsed }.thenBy { it.pos.manhattan(valley.exit) }
+
+    val queue = Queue<State>()
         .apply { offer(initial) }
     var exit: State? = null
     var visited = mutableSetOf<Pair<Pos, Int>>()
@@ -73,7 +86,7 @@ private fun solve(valley: Valley, initial: State): State {
         if (state.excerpt(valley) !in visited)
             state.next(valley)
                 .forEach {
-                    queue.offer(it)
+                    if (it.excerpt(valley) !in visited) queue.offer(it)
                     if (it.pos == valley.exit) exit = it
                 }
                 .also { visited += state.excerpt(valley) }
@@ -91,6 +104,7 @@ private fun solve(valley: Valley, initial: State): State {
 }
 
 
+
 private fun State.next(valley: Valley): List<State> {
     val nextBlizzards = blizzards.map { (p, dir) ->
         val r = (p.first + dir.v.first).keepIn(valley.rows)
@@ -104,6 +118,7 @@ private fun State.next(valley: Valley): List<State> {
                     && p !in occupied
         }
     return possibleMoves.map { State(nextBlizzards, it, timeElapsed + 1) }
+        .sortedBy { it.pos.manhattan(valley.exit) }
 }
 
 private fun parseValley(input: String): Valley {
