@@ -51,43 +51,44 @@ data class Valley(
             }
         }
     }
+
+    fun blizzardsAt(time: Int) = blizzardsByTime[time % lcm]!!
 }
 
-data class State(val blizzards: List<Blizzard>, val pos: Pos, val timeElapsed: Int = 0)
+data class State(val pos: Pos, val timeElapsed: Int = 0)
 
 private fun State.excerpt(valley: Valley) = pos to timeElapsed % valley.lcm
+fun State.goTo(valley: Valley, exit: Pos) = solve(valley, this, exit)
 
 fun part1(input: String): Int {
     val valley = parseValley(input)
-    val initial = State(valley.blizzards, valley.enter)
-    return solve(valley, initial).timeElapsed
+    return State(valley.enter)
+        .goTo(valley, valley.exit)
+        .timeElapsed
 }
 
 fun part2(input: String): Int {
     val valley = parseValley(input)
-    val initial = State(valley.blizzards, valley.enter)
-    val p1: State = solve(valley, initial)
-    val p2: State = solve(valley.copy(enter = valley.exit, exit = valley.enter), p1)
-    val p3: State = solve(valley, p2)
-
-    return p3.timeElapsed
+    return State(valley.enter)
+        .goTo(valley, valley.exit)
+        .goTo(valley, valley.enter)
+        .goTo(valley, valley.exit)
+        .timeElapsed
 }
 
-private fun solve(valley: Valley, initial: State): State {
-    val comparator = compareBy<State> { it.timeElapsed }.thenBy { it.pos.manhattan(valley.exit) }
-
+private fun solve(valley: Valley, initial: State, exit: Pos): State {
     val queue = Queue<State>()
         .apply { offer(initial) }
-    var exit: State? = null
-    var visited = mutableSetOf<Pair<Pos, Int>>()
+    var result: State? = null
+    val visited = mutableSetOf<Pair<Pos, Int>>()
     var mark = TimeSource.Monotonic.markNow()
-    while (exit == null) {
+    while (result == null) {
         val state = queue.poll()
         if (state.excerpt(valley) !in visited)
             state.next(valley)
                 .forEach {
                     if (it.excerpt(valley) !in visited) queue.offer(it)
-                    if (it.pos == valley.exit) exit = it
+                    if (it.pos == exit) result = it
                 }
                 .also { visited += state.excerpt(valley) }
                 .also {
@@ -100,24 +101,19 @@ private fun solve(valley: Valley, initial: State): State {
                     }
                 }
     }
-    return exit!!
+    return result!!
 }
 
 
-
 private fun State.next(valley: Valley): List<State> {
-    val nextBlizzards = blizzards.map { (p, dir) ->
-        val r = (p.first + dir.v.first).keepIn(valley.rows)
-        val c = (p.second + dir.v.second).keepIn(valley.cols)
-        Blizzard(r to c, dir)
-    }
-    val occupied = nextBlizzards.map { it.first }.toHashSet()
+    val t = timeElapsed + 1
+    val occupied = valley.blizzardsAt(t)
     val possibleMoves = (Dir.values().map { pos + it } + pos)
         .filter { p: Pos ->
             (p.first in valley.rows && p.second in valley.cols || p == valley.exit || p == valley.enter)
                     && p !in occupied
         }
-    return possibleMoves.map { State(nextBlizzards, it, timeElapsed + 1) }
+    return possibleMoves.map { State(it, t) }
         .sortedBy { it.pos.manhattan(valley.exit) }
 }
 
