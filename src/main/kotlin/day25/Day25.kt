@@ -2,35 +2,25 @@ package day25
 
 import execute
 import readAllText
-import wtf
 
 
-fun part1(input: String) = input.lineSequence().filterNot(String::isBlank)
+fun part1(input: String) = input.lineSequence()
     .sumOf(::decode)
     .let(::encode)
 
+private const val DIGITS = "=-012"
+
 private fun decode(line: String) = line.fold(0L) { acc, c ->
-    acc * 5 + when (c) {
-        '=' -> -2
-        '-' -> -1
-        '0' -> 0
-        '1' -> 1
-        '2' -> 2
-        else -> wtf(c)
-    }
+    acc * 5 + DIGITS.indexOf(c) - 2
 }
 
-private fun encode(number: Long): String {
-    if (number == 0L) return "0"
+private fun encode(number: Long) = buildString {
     var b = number
-    return buildString {
-        while (b > 0) {
-            val m = (b + 2) % 5
-            b = (b + 2) / 5
-            append("=-012"[m.toInt()])
-        }
-    }.reversed()
-}
+    while (b > 0) {
+        append(DIGITS[((b + 2) % 5).toInt()])
+        b = (b + 2) / 5
+    }
+}.reversed().ifEmpty { "0" }
 
 fun part2(input: String) = 0
 
@@ -53,5 +43,5 @@ fun main() {
         122
     """.trimIndent()
     execute(::part1, test, "2=-1=0")
-    execute(::part1, input)
+    execute(::part1, input, "122-0==-=211==-2-200")
 }
