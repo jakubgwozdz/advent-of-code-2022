@@ -128,12 +128,12 @@ private fun search(graph: Graph, time: Int, pos: List<String>): Long {
         if (result < curr.score) {
             result = curr.score
             rs = curr
-            println(rs)
+//            println(rs)
         }
         tested++
         if (mark.elapsedNow() > 1.seconds) {
             time++
-            println("${time}s: tested $tested, max $result, queue size ${queue.size}, rate = ${tested - prev}/s")
+//            println("${time}s: tested $tested, max $result, queue size ${queue.size}, rate = ${tested - prev}/s")
             mark = TimeSource.Monotonic.markNow()
             prev = tested
         }
@@ -143,8 +143,8 @@ private fun search(graph: Graph, time: Int, pos: List<String>): Long {
     }
 //    }
 
-    println("tested: $tested")
-    println(rs)
+//    println("tested: $tested")
+//    println(rs)
     return result
 }
 

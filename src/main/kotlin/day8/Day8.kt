@@ -1,11 +1,10 @@
 package day8
 
+import execute
 import readAllText
 import kotlin.math.absoluteValue
-import kotlin.time.DurationUnit
-import kotlin.time.measureTime
 
-fun main() = measureTime {
+fun main() {
     val test = """
         30373
         25512
@@ -13,11 +12,12 @@ fun main() = measureTime {
         33549
         35390
     """.trimIndent()
-    println(part1(test))
-    println(part1(readAllText("local/day8_input.txt")))
-    println(part2(test))
-    println(part2(readAllText("local/day8_input.txt")))
-}.let { println(it.toString(DurationUnit.SECONDS, 3)) }
+    val input = readAllText("local/day8_input.txt")
+    execute(::part1, test)
+    execute(::part1, input)
+    execute(::part2, test)
+    execute(::part2, input)
+}
 
 fun part1(input: String) = input.lineSequence().filterNot(String::isBlank).toList().let { rows ->
     rows.indices.sumOf { y ->

@@ -1,16 +1,14 @@
-@file:Suppress("USELESS_CAST")
-
 package day2
 
+import execute
 import readAllText
 import wtf
-import kotlin.time.DurationUnit
-import kotlin.time.measureTime
 
-fun main() = measureTime {
-    println(part1(readAllText("local/day2_input.txt")))
-    println(part2(readAllText("local/day2_input.txt")))
-}.let { println(it.toString(DurationUnit.SECONDS, 3)) }
+fun main() {
+    val input = readAllText("local/day2_input.txt")
+    execute(::part1, input)
+    execute(::part2, input)
+}
 
 fun part1(input: String) = input.lineSequence().filterNot(String::isBlank).sumOf(::part1result)
 fun part2(input: String) = input.lineSequence().filterNot(String::isBlank).sumOf(::part2result)

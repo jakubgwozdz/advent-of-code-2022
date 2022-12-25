@@ -1,11 +1,10 @@
 package day7
 
+import execute
 import readAllText
 import wtf
-import kotlin.time.DurationUnit
-import kotlin.time.measureTime
 
-fun main() = measureTime {
+fun main() {
     val example = """
         ${'$'} cd /
         ${'$'} ls
@@ -31,11 +30,12 @@ fun main() = measureTime {
         5626152 d.ext
         7214296 k
     """.trimIndent()
-    println(part1(example))
-    println(part1(readAllText("local/day7_input.txt")))
-    println(part2(example))
-    println(part2(readAllText("local/day7_input.txt")))
-}.let { println(it.toString(DurationUnit.SECONDS, 3)) }
+    val input = readAllText("local/day7_input.txt")
+    execute(::part1, example)
+    execute(::part1, input)
+    execute(::part2, example)
+    execute(::part2, input)
+}
 
 fun part1(input: String) = parse(input).sizes().filter { it <= 100000 }.sum()
 

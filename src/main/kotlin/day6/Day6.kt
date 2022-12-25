@@ -1,13 +1,13 @@
 package day6
 
+import execute
 import readAllText
-import kotlin.time.DurationUnit
-import kotlin.time.measureTime
 
-fun main() = measureTime {
-    println(part1(readAllText("local/day6_input.txt")))
-    println(part2(readAllText("local/day6_input.txt")))
-}.let { println(it.toString(DurationUnit.SECONDS, 3)) }
+fun main() {
+    val input = readAllText("local/day6_input.txt")
+    execute(::part1, input)
+    execute(::part2, input)
+}
 
 fun part1(input: String) = solve(input, 4)
 fun part2(input: String) = solve(input, 14)

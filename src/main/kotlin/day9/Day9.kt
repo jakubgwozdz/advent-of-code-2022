@@ -47,23 +47,6 @@ fun State.solve(input: String) = moveSequence(input)
 fun part1(input: String) = State(2).apply { solve(input) }.visited.size
 fun part2(input: String) = State(10).apply { solve(input) }.visited.size
 
-fun State.printIt() {
-    val all = visited + rope.toSet()
-    val rows = all.minOf { it.r } - 1..all.maxOf { it.r } + 1
-    val cols = all.minOf { it.c } - 1..all.maxOf { it.c } + 1
-    rows.forEach { r ->
-        println(cols.joinToString("") { c ->
-            when (val p = Pos(r, c)) {
-                rope.first() -> "H"
-                in rope -> rope.indexOf(p).toString()
-                in visited -> "s"
-                else -> "."
-            }
-        })
-    }
-    println()
-}
-
 private val regex = "(.) (\\d+)".toRegex()
 private fun moveSequence(input: String) = input.lineSequence()
     .filterNot(String::isBlank)

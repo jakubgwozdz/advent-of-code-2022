@@ -41,8 +41,7 @@ private fun Board.play(
         val fromX = step(acc)
         if (fromX.first !in walls) fromX else acc
     }
-
-}.also { println("$op moved to $it") }
+}
 
 private fun Board.stepPart1(from: Pair<Point, Dir>): Pair<Point, Dir> = from.let { (pos, dir) ->
     val (r, c) = pos
@@ -171,7 +170,6 @@ private fun Board.stepPart2(from: Pair<Point, Dir>): Pair<Point, Dir> {
     else if (faceSize == 4) transitions4[rb to cb to dir]?.invoke(pos1 to dir) ?: TODO((rb to cb to dir).toString())
     else if (faceSize == 50) transitions50[rb to cb to dir]?.invoke(pos1 to dir) ?: TODO((rb to cb to dir).toString())
     else wtf(faceSize))
-        .also { println(" from $from to $it") }
 }
 
 private fun parseBoard(

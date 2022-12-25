@@ -1,15 +1,13 @@
 package day5
 
+import execute
 import readAllText
 import splitBy
 import wtf
-import kotlin.time.DurationUnit
-import kotlin.time.measureTime
 
-fun main() = measureTime {
-    println(
-        part1(
-            """
+fun main() {
+    val input = readAllText("local/day5_input.txt")
+    val test = """
         [D]    
     [N] [C]    
     [Z] [M] [P]
@@ -20,11 +18,12 @@ fun main() = measureTime {
     move 2 from 2 to 1
     move 1 from 1 to 2
     """.trimIndent()
-        )
-    )
-    println(part1(readAllText("local/day5_input.txt")))
-    println(part2(readAllText("local/day5_input.txt")))
-}.let { println(it.toString(DurationUnit.SECONDS, 3)) }
+
+    execute(::part1, test)
+    execute(::part1, input)
+    execute(::part2, test)
+    execute(::part2, input)
+}
 
 private val regex = "move (\\d+) from (.) to (.)".toRegex()
 private fun parse(matchResult: MatchResult) =

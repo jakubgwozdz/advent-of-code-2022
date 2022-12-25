@@ -1,12 +1,12 @@
 package day4
 
+import execute
 import parseRecords
 import readAllText
-import kotlin.time.DurationUnit
-import kotlin.time.measureTime
 
-fun main() = measureTime {
-    val example = """
+fun main() {
+    val input = readAllText("local/day2_input.txt")
+    val test = """
         2-4,6-8
         2-3,4-5
         5-7,7-9
@@ -14,10 +14,11 @@ fun main() = measureTime {
         6-6,4-6
         2-6,4-8
     """.trimIndent()
-    println(part2(example))
-    println(part1(readAllText("local/day4_input.txt")))
-    println(part2(readAllText("local/day4_input.txt")))
-}.let { println(it.toString(DurationUnit.SECONDS, 3)) }
+    execute(::part1, test, 157)
+    execute(::part1, input)
+    execute(::part2, test, 70)
+    execute(::part2, input)
+}
 
 private val regex = "(\\d+)-(\\d+),(\\d+)-(\\d+)".toRegex()
 private fun buildRecord(matchResult: MatchResult) =
