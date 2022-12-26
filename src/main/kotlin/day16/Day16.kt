@@ -5,8 +5,6 @@ import bfs
 import execute
 import parseRecords
 import readAllText
-import kotlin.time.DurationUnit
-import kotlin.time.TimeSource
 
 data class Valve(val rate: Long, val exits: List<String>)
 class Graph(valves: Map<String, Valve>) {
@@ -53,8 +51,6 @@ data class Move(
     val dist: Int,
 )
 
-var pppp = 0L
-
 data class State(
     val graph: Graph,
     val timeLeft: Int,
@@ -62,7 +58,7 @@ data class State(
     val p2pos: Int = 0,
     val p1dist: Int = -1,
     val p2dist: Int = -1,
-    val open: Int = 0,
+    val closed: Int = graph.totalBits,
     val score: Long = 0,
 ) {
     operator fun plus(actions: Pair<Move, Move>): State {
@@ -72,7 +68,6 @@ data class State(
         val newDist1 = a1.dist - 1
         val newDist2 = a2.dist - 1
         val newOpen = listOf(a1, a2).filter { it.dist == 0 }.map(Move::id)
-        println(minOf(newDist1, newDist2))
         var timeElapsed = 1
         val newScore = score + newOpen.sumOf { graph[it] * (timeLeft - timeElapsed) }
         return copy(
@@ -80,14 +75,15 @@ data class State(
             p2pos = newPos2,
             p1dist = newDist1,
             p2dist = newDist2,
-            open = open + newOpen.sumOf { 1 shl it },
+            closed = closed - newOpen.sumOf { 1 shl it },
             timeLeft = timeLeft - timeElapsed,
             score = newScore,
         )
     }
 
-    val closed
-        get() = graph.totalBits - open
+    val potential: Long
+        get() = (1..graph.data.lastIndex)
+            .sumOf { if ((1 shl it) and this.closed > 0) graph.data[it] else 0 } * timeLeft
 
     override fun toString() =
         "@$p1pos($p1dist),$p2pos($p2dist), score $score, closed $closed, time left $timeLeft"
@@ -128,41 +124,18 @@ private fun search(graph: Graph, time: Int, players: Int): Long {
 
     val comparator = compareByDescending<State> { it.score }
 
-    val queue = PriorityQueue<State>(comparator).apply { offer(start) }
+    val queue = PriorityQueue(comparator).apply { offer(start) }
 
     var result = 0L
-    var rs = start
-    var tested = 0L
-    var mark = TimeSource.Monotonic.markNow()
-    var prev = 0L
-    var time = 0
     while (queue.isNotEmpty()) {
         val curr = queue.poll()
-//            .also {
-//                if (pos.size > 1) {
-//                    if (50 > pppp++) println(it) else TODO()
-//                }
-//            }
-
         if (result < curr.score) {
             result = curr.score
-            println("${mark.elapsedNow().toString(DurationUnit.SECONDS, 3)}: $curr")
         }
-        tested++
-//        if (mark.elapsedNow() > 1.seconds) {
-//            time++
-////            println("${time}s: tested $tested, max $result, queue size ${queue.size}, rate = ${tested - prev}/s")
-//            mark = TimeSource.Monotonic.markNow()
-//            prev = tested
-//        }
         curr.possibleActions()
             .map { curr + it }
-            .forEach { queue.offer(it) }
+            .forEach { if (it.score + it.potential > result) queue.offer(it) }
     }
-//    }
-
-//    println("tested: $tested")
-//    println(rs)
     return result
 }
 
