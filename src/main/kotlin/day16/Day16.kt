@@ -5,13 +5,14 @@ import bfs
 import execute
 import parseRecords
 import readAllText
-import kotlin.time.Duration.Companion.seconds
+import kotlin.time.DurationUnit
 import kotlin.time.TimeSource
 
 data class Valve(val rate: Long, val exits: List<String>)
 class Graph(valves: Map<String, Valve>) {
     val data: List<Long>
     val moves: Map<Pair<Int, Int>, Move>
+    val totalBits: Int
 
     init {
         var nextId = 1
@@ -28,7 +29,6 @@ class Graph(valves: Map<String, Valve>) {
 
         moves = valves
             .filter { (k, v) -> v.rate > 0 || k == "AA" }
-            .also { println(it.size) }
             .keys.flatMap { s -> valves.filterValues { it.rate > 0 }.keys.map { e -> s to e } }
             .filter { (s, e) -> s != e }
             .associateWith { (s, e) ->
@@ -42,91 +42,89 @@ class Graph(valves: Map<String, Valve>) {
             }
             .mapKeys { (k, _) -> idToNumbers[k.first]!! to idToNumbers[k.second]!! }
 
+        totalBits = (1..data.lastIndex).sumOf { 1 shl it }
     }
 
     operator fun get(pos: Int): Long = data[pos]
 }
 
-sealed interface Action {
-    val id: Int
-    val dist: Int
-}
-
-data class Move(override val id: Int, override val dist: Int) : Action {
-    override fun toString() = "->$id($dist)"
-}
+data class Move(
+    val id: Int,
+    val dist: Int,
+)
 
 var pppp = 0L
 
 data class State(
     val graph: Graph,
     val timeLeft: Int,
-    val pos: List<Int>,
-    val distances: List<Int> = pos.map { -1 },
-    val open: Set<Int> = emptySet(),
+    val p1pos: Int = 0,
+    val p2pos: Int = 0,
+    val p1dist: Int = -1,
+    val p2dist: Int = -1,
+    val open: Int = 0,
     val score: Long = 0,
-    val path: List<List<Action>> = emptyList(),
 ) {
-    operator fun plus(actions: List<Action>): State {
-        val newPos = actions.map { it.id }
-        val newDist = actions.map { it.dist - 1 }
-//        val newOpen = actions.filterIsInstance<Open>().map(Open::id)
-        val newOpen = actions.filterIsInstance<Move>().filter { it.dist == 0 }.map(Move::id)
+    operator fun plus(actions: Pair<Move, Move>): State {
+        val (a1, a2) = actions
+        val newPos1 = a1.id
+        val newPos2 = a2.id
+        val newDist1 = a1.dist - 1
+        val newDist2 = a2.dist - 1
+        val newOpen = listOf(a1, a2).filter { it.dist == 0 }.map(Move::id)
+        println(minOf(newDist1, newDist2))
         var timeElapsed = 1
         val newScore = score + newOpen.sumOf { graph[it] * (timeLeft - timeElapsed) }
         return copy(
-            pos = newPos,
-            open = open + newOpen,
-            distances = newDist,
+            p1pos = newPos1,
+            p2pos = newPos2,
+            p1dist = newDist1,
+            p2dist = newDist2,
+            open = open + newOpen.sumOf { 1 shl it },
             timeLeft = timeLeft - timeElapsed,
             score = newScore,
-//            path = buildList { addAll(path); add(actions) }
         )
     }
 
-    val closed by lazy { (1..graph.data.lastIndex) - open }
+    val closed
+        get() = graph.totalBits - open
 
     override fun toString() =
-        "@$pos($distances), score $score, closed $closed, time left $timeLeft, path $path"
+        "@$p1pos($p1dist),$p2pos($p2dist), score $score, closed $closed, time left $timeLeft"
 
 }
 
-private fun State.possibleActions(): List<List<Action>> = buildList {
+private fun State.possibleActions(): List<Pair<Move, Move>> = buildList {
     if (timeLeft > 0) {
-        pos.mapIndexed { index, p ->
-            buildList<Action> {
-                if (distances[index] > 0) add(Move(p, distances[index]))
-                else if (p in closed) add(Move(p, 0))
-                else {
-                    val notCurr = closed.filter { it != p && it !in pos }
-                    val next = notCurr.associateWith { t -> graph.moves[p to t] ?: error("No path from $p to $t") }
-                    val reachable = next.filterValues { it.dist <= timeLeft }
-                    reachable.forEach { (v, d) -> add(d) }
-                }
-            }
-        }.let { ll ->
-            when (ll.size) {
-                1 -> ll[0].forEach { l0 -> add(listOf(l0)) }
-                2 -> {
-                    ll[0].forEach { l0 ->
-                        ll[1].forEach { l1 ->
-                            if (l0.id != l1.id) add(listOf(l0, l1))
-                        }
-                    }
-//                    if (ll[0].isEmpty() && ll[1].isNotEmpty()) ll[1].forEach { l1 -> add(listOf(Wait, l1)) }
-//                    if (ll[0].isNotEmpty() && ll[1].isEmpty()) ll[0].forEach { l0 -> add(listOf(l0, Wait)) }
-                    if (ll[0].isEmpty() && ll[1].isNotEmpty()) ll[1].forEach { l1 -> add(listOf(Move(pos[0], 1), l1)) }
-                    if (ll[0].isNotEmpty() && ll[1].isEmpty()) ll[0].forEach { l0 -> add(listOf(l0, Move(pos[1], 1))) }
-                }
 
-                else -> TODO()
+        val ll1 = possibleForOne(p1pos, p1dist)
+        val ll2 = possibleForOne(p2pos, p2dist)
+
+        if (ll1.isNotEmpty() || ll2.isNotEmpty()) {
+            ll1.ifEmpty { listOf(Move(p1pos, 1)) }.forEach { l1 ->
+                ll2.ifEmpty { listOf(Move(p2pos, 1)) }.forEach { l2 ->
+                    if (l1.id != l2.id) add(l1 to l2)
+                }
             }
+
         }
+
     }
 }
 
-private fun search(graph: Graph, time: Int, pos: List<Int>): Long {
-    val start = State(graph, time, pos)
+private fun State.possibleForOne(pos: Int, dist: Int) = buildList {
+    if (dist > 0) add(Move(pos, dist))
+    else if ((1 shl pos) and closed > 0) add(Move(pos, 0))
+    else {
+        val notCurr = (1..graph.data.lastIndex).filter { it != p1pos && it != p2pos && (1 shl it) and closed > 0 }
+        val next = notCurr.associateWith { t -> graph.moves[pos to t] ?: error("No path from $pos to $t") }
+        val reachable = next.filterValues { it.dist <= timeLeft }
+        reachable.forEach { (v, d) -> add(d) }
+    }
+}
+
+private fun search(graph: Graph, time: Int, players: Int): Long {
+    val start = State(graph, time, p2dist = if (players == 1) time * 2 else -1)
 
     val comparator = compareByDescending<State> { it.score }
 
@@ -140,24 +138,23 @@ private fun search(graph: Graph, time: Int, pos: List<Int>): Long {
     var time = 0
     while (queue.isNotEmpty()) {
         val curr = queue.poll()
-            .also {
+//            .also {
 //                if (pos.size > 1) {
 //                    if (50 > pppp++) println(it) else TODO()
 //                }
-            }
+//            }
 
         if (result < curr.score) {
             result = curr.score
-            rs = curr
-//            println(rs)
+            println("${mark.elapsedNow().toString(DurationUnit.SECONDS, 3)}: $curr")
         }
         tested++
-        if (mark.elapsedNow() > 1.seconds) {
-            time++
-//            println("${time}s: tested $tested, max $result, queue size ${queue.size}, rate = ${tested - prev}/s")
-            mark = TimeSource.Monotonic.markNow()
-            prev = tested
-        }
+//        if (mark.elapsedNow() > 1.seconds) {
+//            time++
+////            println("${time}s: tested $tested, max $result, queue size ${queue.size}, rate = ${tested - prev}/s")
+//            mark = TimeSource.Monotonic.markNow()
+//            prev = tested
+//        }
         curr.possibleActions()
             .map { curr + it }
             .forEach { queue.offer(it) }
@@ -171,11 +168,11 @@ private fun search(graph: Graph, time: Int, pos: List<Int>): Long {
 
 fun part1(input: String) = input.parseRecords(regex, ::parse)
     .toMap()
-    .let { data -> search(Graph(data), 30, listOf(0)) }
+    .let { data -> search(Graph(data), 30, 1) }
 
 fun part2(input: String) = input.parseRecords(regex, ::parse)
     .toMap()
-    .let { data -> search(Graph(data), 26, listOf(0, 0)) }
+    .let { data -> search(Graph(data), 26, 2) }
 
 private val regex = "Valve (.+) has flow rate=(.+); tunnels? leads? to valves? (.+)".toRegex()
 private fun parse(matchResult: MatchResult) =
