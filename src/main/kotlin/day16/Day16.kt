@@ -9,29 +9,50 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
 data class Valve(val rate: Long, val exits: List<String>)
-class Graph(val valves: Map<String, Valve>) {
-    operator fun get(pos: String): Valve = valves[pos]!!
-    val moves = valves
-        .filter { (k, v) -> v.rate > 0 || k == "AA" }
-        .keys.flatMap { s -> valves.filterValues { it.rate > 0 }.keys.map { e -> s to e } }
-        .filter { (s, e) -> s != e }
-        .associateWith { (s, e) ->
-            bfs(
-                graphOp = { p -> this[p].exits },
-                start = s,
-                initial = listOf<String>(),
-                moveOp = { l, p -> l + p },
-                endOp = { it == e }
-            )!!.let { Move(e, it.size) }
-        }
+class Graph(valves: Map<String, Valve>) {
+    val data: List<Long>
+    val moves: Map<Pair<Int, Int>, Move>
+
+    init {
+        var nextId = 1
+        val idToNumbers = valves.filter { (k, v) -> v.rate > 0 || k == "AA" }
+            .toList()
+            .sortedByDescending { it.second.rate }
+            .map { it.first }
+            .associateWith { if (it == "AA") 0 else nextId++ }
+
+        data = valves.filter { (k, v) -> v.rate > 0 || k == "AA" }
+            .map { (k, v) -> idToNumbers[k]!! to v.rate }
+            .sortedBy { it.first }
+            .map { it.second }
+
+        moves = valves
+            .filter { (k, v) -> v.rate > 0 || k == "AA" }
+            .also { println(it.size) }
+            .keys.flatMap { s -> valves.filterValues { it.rate > 0 }.keys.map { e -> s to e } }
+            .filter { (s, e) -> s != e }
+            .associateWith { (s, e) ->
+                bfs(
+                    graphOp = { p -> valves[p]!!.exits },
+                    start = s,
+                    initial = listOf<String>(),
+                    moveOp = { l, p -> l + p },
+                    endOp = { it == e }
+                )!!.let { Move(idToNumbers[e]!!, it.size) }
+            }
+            .mapKeys { (k, _) -> idToNumbers[k.first]!! to idToNumbers[k.second]!! }
+
+    }
+
+    operator fun get(pos: Int): Long = data[pos]
 }
 
 sealed interface Action {
-    val id: String
+    val id: Int
     val dist: Int
 }
 
-data class Move(override val id: String, override val dist: Int) : Action {
+data class Move(override val id: Int, override val dist: Int) : Action {
     override fun toString() = "->$id($dist)"
 }
 
@@ -40,9 +61,9 @@ var pppp = 0L
 data class State(
     val graph: Graph,
     val timeLeft: Int,
-    val pos: List<String>,
+    val pos: List<Int>,
     val distances: List<Int> = pos.map { -1 },
-    val open: Set<String> = emptySet(),
+    val open: Set<Int> = emptySet(),
     val score: Long = 0,
     val path: List<List<Action>> = emptyList(),
 ) {
@@ -52,7 +73,7 @@ data class State(
 //        val newOpen = actions.filterIsInstance<Open>().map(Open::id)
         val newOpen = actions.filterIsInstance<Move>().filter { it.dist == 0 }.map(Move::id)
         var timeElapsed = 1
-        val newScore = score + newOpen.sumOf { graph[it].rate * (timeLeft - timeElapsed) }
+        val newScore = score + newOpen.sumOf { graph[it] * (timeLeft - timeElapsed) }
         return copy(
             pos = newPos,
             open = open + newOpen,
@@ -63,7 +84,7 @@ data class State(
         )
     }
 
-    val closed by lazy { graph.valves.filterValues { it.rate > 0 }.keys - open }
+    val closed by lazy { (1..graph.data.lastIndex) - open }
 
     override fun toString() =
         "@$pos($distances), score $score, closed $closed, time left $timeLeft, path $path"
@@ -104,7 +125,7 @@ private fun State.possibleActions(): List<List<Action>> = buildList {
     }
 }
 
-private fun search(graph: Graph, time: Int, pos: List<String>): Long {
+private fun search(graph: Graph, time: Int, pos: List<Int>): Long {
     val start = State(graph, time, pos)
 
     val comparator = compareByDescending<State> { it.score }
@@ -150,25 +171,17 @@ private fun search(graph: Graph, time: Int, pos: List<String>): Long {
 
 fun part1(input: String) = input.parseRecords(regex, ::parse)
     .toMap()
-    .let { data -> search(Graph(data), 30, listOf("AA")) }
+    .let { data -> search(Graph(data), 30, listOf(0)) }
 
 fun part2(input: String) = input.parseRecords(regex, ::parse)
     .toMap()
-    .let { data -> search(Graph(data), 26, listOf("AA", "AA")) }
+    .let { data -> search(Graph(data), 26, listOf(0, 0)) }
 
 private val regex = "Valve (.+) has flow rate=(.+); tunnels? leads? to valves? (.+)".toRegex()
 private fun parse(matchResult: MatchResult) =
     matchResult.destructured.let { (a, b, c) -> a to Valve(b.toLong(), c.split(", ")) }
 
 fun main() {
-
-//    var mark = TimeSource.Monotonic.markNow()
-//    permutations(15).forEach {
-//        if (mark.elapsedNow() > 1.seconds) {
-//            println(it)
-//            mark = TimeSource.Monotonic.markNow()
-//        }
-//    }
 
     val input = readAllText("local/day16_input.txt")
     val test = """
@@ -188,26 +201,4 @@ fun main() {
     execute(::part1, input, 2359)
     execute(::part2, test, 1707)
     execute(::part2, input)
-}
-
-
-fun permutations(n: Int): Sequence<List<Int>> {
-    val a = IntArray(n) { it }
-    return sequenceOf(a.toList()) + generateSequence {
-        var i = a.size - 1
-        while (i > 0 && a[i] <= a[i - 1]) i--
-        if (i <= 0) return@generateSequence null
-        var j = a.size - 1
-        while (a[j] <= a[i - 1]) j--
-        a.swap(i - 1, j)
-        j = a.size - 1
-        while (i < j) a.swap(i++, j--)
-        a.toList()
-    }
-}
-
-fun IntArray.swap(i: Int, j: Int) {
-    val v = this[i]
-    this[i] = this[j]
-    this[j] = v
 }
