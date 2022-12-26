@@ -144,11 +144,11 @@ inline fun <T> execute(
     val duration = mark.elapsedNow()
     val code = (op as FunctionReference).let { "${(it.owner as PackageReference).jClass.packageName}.${it.name}()" }
     if (!printResult)
-        println("$code took ${duration.toString(DurationUnit.MILLISECONDS, 3)}")
+        println("$code took ${duration.toString(DurationUnit.MILLISECONDS, 0)}")
     else if (result.contains('\n'))
-        println("$code after ${duration.toString(DurationUnit.MILLISECONDS, 3)} => \n${result.trimEnd()}")
+        println("$code after ${duration.toString(DurationUnit.MILLISECONDS, 0)} => \n${result.trimEnd()}")
     else
-        println("$code after ${duration.toString(DurationUnit.MILLISECONDS, 3)} => $result")
+        println("$code after ${duration.toString(DurationUnit.MILLISECONDS, 0)} => $result")
     return duration
 }
 

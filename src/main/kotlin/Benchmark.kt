@@ -103,7 +103,7 @@ fun main() {
             acc + runFor(input, false, op1, op2)
         }
         .also {
-            println("COLD TOTAL: ${it.toString(DurationUnit.MILLISECONDS, 3)}")
+            println("COLD TOTAL: ${it.toString(DurationUnit.MILLISECONDS, 0)}")
         }
 
     runs
@@ -111,6 +111,6 @@ fun main() {
             acc + runFor(input, true, op1, op2)
         }
         .also {
-            println("WARMED UP TOTAL: ${it.toString(DurationUnit.MILLISECONDS, 3)}")
+            println("WARMED UP TOTAL: ${it.toString(DurationUnit.MILLISECONDS, 0)}")
         }
 }

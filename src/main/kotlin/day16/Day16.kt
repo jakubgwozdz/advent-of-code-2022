@@ -63,20 +63,27 @@ data class State(
 ) {
     operator fun plus(actions: Pair<Move, Move>): State {
         val (a1, a2) = actions
-        val newPos1 = a1.id
-        val newPos2 = a2.id
-        val newDist1 = a1.dist - 1
-        val newDist2 = a2.dist - 1
-        val newOpen = listOf(a1, a2).filter { it.dist == 0 }.map(Move::id)
-        var timeElapsed = 1
-        val newScore = score + newOpen.sumOf { graph[it] * (timeLeft - timeElapsed) }
+        val timeElapsed = minOf(a1.dist, a2.dist).coerceAtLeast(1)
+
+        val newTileLeft = timeLeft - timeElapsed
+        var newScore = score
+        var newClosed = closed
+        if (a1.dist == 0) {
+            newScore += graph[a1.id] * newTileLeft
+            newClosed -= 1 shl a1.id
+        }
+        if (a2.dist == 0) {
+            newScore += graph[a2.id] * newTileLeft
+            newClosed -= 1 shl a2.id
+        }
+
         return copy(
-            p1pos = newPos1,
-            p2pos = newPos2,
-            p1dist = newDist1,
-            p2dist = newDist2,
-            closed = closed - newOpen.sumOf { 1 shl it },
-            timeLeft = timeLeft - timeElapsed,
+            p1pos = a1.id,
+            p2pos = a2.id,
+            p1dist = a1.dist - timeElapsed,
+            p2dist = a2.dist - timeElapsed,
+            closed = newClosed,
+            timeLeft = newTileLeft,
             score = newScore,
         )
     }
@@ -170,5 +177,5 @@ fun main() {
     execute(::part1, test, 1651)
     execute(::part1, input, 2359)
     execute(::part2, test, 1707)
-    execute(::part2, input)
+    execute(::part2, input, 2999)
 }
